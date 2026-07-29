@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="./manifest.json">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<title>Road Clock Alpha 5</title>
+<title>Road Clock Alpha 6</title>
 <style>
 :root{
   --green:#5af27f;--green2:#178844;--bg:#07110b;--panel:rgba(5,12,7,.97);
@@ -53,7 +53,29 @@ button,input{font:inherit}button{cursor:pointer}
 .planner{position:absolute;z-index:1400;inset:0;display:none;overflow:auto;background:#030704;padding:calc(18px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))}.planner.open{display:block}.plannerHead{display:flex;justify-content:space-between;align-items:center}.plannerHead h2{margin:0}.close{width:42px;height:42px;border-radius:50%;border:1px solid #304036;background:#0b140e;color:#fff}.card{margin-top:18px;border:1px solid #25352a;border-radius:18px;padding:15px;background:#0a110c}
 label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{width:100%;border:1px solid #2a3b2e;border-radius:12px;background:#061009;color:#fff;padding:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.primary{width:100%;margin-top:16px;border:0;border-radius:14px;padding:14px;background:var(--green);color:#041007;font-weight:900}.helper{font-size:11px;color:#aab6ae;line-height:1.45}
 .driverIcon{width:38px;height:38px;display:grid;place-items:center;transform-origin:center}
-@media(max-width:390px){.turnText strong{font-size:22px}.turnText span{font-size:13px}.clockCircle{width:68px;height:68px}.metrics{grid-template-columns:repeat(2,1fr);row-gap:13px}.metric:nth-child(3){border-left:0;padding-left:0}.sheet{height:390px;transform:translateY(calc(390px - var(--sheet-c)))}}
+@media(max-width:390px){
+.sheet.emptyState{height:calc(258px + env(safe-area-inset-bottom));transform:translateY(0)}
+.turnText strong{font-size:22px}.turnText span{font-size:13px}.clockCircle{width:68px;height:68px}.metrics{grid-template-columns:repeat(2,1fr);row-gap:13px}.metric:nth-child(3){border-left:0;padding-left:0}.sheet{height:390px;transform:translateY(calc(390px - var(--sheet-c)))}}
+
+.sheet.emptyState{
+  height:calc(250px + env(safe-area-inset-bottom));
+  transform:translateY(0);
+}
+.sheet.emptyState .handleArea{height:28px}
+.emptyRouteState{display:flex;flex-direction:column;justify-content:center;gap:18px;min-height:185px;padding-bottom:10px}
+.plannedRouteState{display:none}
+.sheet.hasRoute .emptyRouteState{display:none}
+.sheet.hasRoute .plannedRouteState{display:block}
+.routeSummary.centered{text-align:center}
+.routeSummary.centered b{font-size:19px;white-space:normal}
+.routeSummary.centered span{font-size:13px}
+.planPrimary{
+  width:100%;border:1px solid #66ff91;border-radius:18px;padding:16px 18px;
+  background:linear-gradient(135deg,rgba(42,196,94,.96),rgba(18,111,52,.98));
+  color:#fff;font-weight:900;font-size:18px;box-shadow:0 8px 22px rgba(0,0,0,.3)
+}
+.planPrimary span{display:block;margin-top:4px;font-size:11px;font-weight:700;color:#caffd6}
+
 </style>
 </head>
 <body>
@@ -64,13 +86,20 @@ label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{wi
 <div id="right" class="right"><div class="limit">SPEED LIMIT<strong id="speedLimit">--</strong></div><div class="speed"><strong id="speedNow">0</strong><span>MPH</span></div><button id="recenter" class="round">⌖</button><button id="resume" class="round resume">RESUME</button><button id="zoomIn" class="round">+</button><button id="zoomOut" class="round">−</button></div>
 <div id="clockRail" class="clockRail"><button id="clockToggle" class="clockToggle">‹</button><div id="clockStack" class="clockStack"><div class="clockCircle drive"><div><small>DRIVE</small><b id="driveCircle">6:42</b></div></div><div class="clockCircle duty"><div><small>DUTY</small><b id="dutyCircle">9:15</b></div></div><div class="clockCircle cycle"><div><small>CYCLE</small><b id="cycleCircle">42:37</b></div></div></div></div>
 <div id="status" class="status neutral">LOCATING YOU…</div><div id="toast" class="toast"></div>
-<section id="sheet" class="sheet"><div id="handleArea" class="handleArea"><div class="handle"></div></div><div class="sheetContent">
-<div class="collapsedRow"><div class="routeSummary"><small id="summaryLabel">Current location</small><b id="summaryTitle">Finding your position…</b><span id="summarySub">Plan a route when ready</span></div><button id="start" class="start" disabled>START ROUTE</button></div>
-<div class="expanded"><div class="actions"><button id="plan" class="secondary">Plan Route</button><button id="clear" class="secondary light">Clear Route</button></div>
+<section id="sheet" class="sheet emptyState"><div id="handleArea" class="handleArea"><div class="handle"></div></div><div class="sheetContent">
+<div id="emptyRouteState" class="emptyRouteState">
+  <div class="routeSummary centered"><small id="summaryLabel">Current location</small><b id="summaryTitle">Finding your position…</b><span id="summarySub">Choose a destination to begin</span></div>
+  <button id="planPrimary" class="planPrimary">PLAN ROUTE<span>Choose destination</span></button>
+</div>
+<div id="plannedRouteState" class="plannedRouteState">
+  <div class="collapsedRow"><div class="routeSummary"><small>Planned route</small><b id="plannedTitle">Destination</b><span id="plannedSub">Ready to begin</span></div><button id="start" class="start">START ROUTE</button></div>
+  <div class="expanded"><div class="actions"><button id="plan" class="secondary">Edit Route</button><button id="clear" class="secondary light">Clear Route</button></div>
 <div class="metrics"><div class="metric"><small>ETA</small><b id="eta">--</b></div><div class="metric"><small>Distance</small><b id="distance">--</b></div><div class="metric"><small>Drive time</small><b id="driveTime">--</b></div><div class="metric"><small>Range</small><b id="rangeMiles">349 mi</b></div></div>
 <div class="stopBox"><small>Recommended shutdown</small><b id="stopName">Plan a route to calculate</b><span id="stopDetail">Road Clock will aim near the end of your usable drive clock with a safety reserve.</span></div>
-<div class="note">Alpha 5 improves live clocks, route progress, map exploration, turn updates and shutdown planning. It remains a prototype, not an ELD or commercial routing system.</div>
-</div></div></section>
+<div class="note">Alpha 6 improves live clocks, route progress, map exploration, turn updates and shutdown planning. It remains a prototype, not an ELD or commercial routing system.</div>
+  </div>
+</div>
+</div></section>
 <section id="planner" class="planner"><div class="plannerHead"><h2>Plan Route</h2><button id="closePlanner" class="close">✕</button></div><div class="card">
 <label>Origin</label><input value="Current location" readonly><label>Destination</label><input id="destination" placeholder="City, venue, address or ZIP code">
 <div class="grid"><div><label>Drive remaining</label><input id="driveHours" type="number" step=".25" value="6.7"></div><div><label>Duty remaining</label><input id="dutyHours" type="number" step=".25" value="9.25"></div><div><label>Cycle remaining</label><input id="cycleHours" type="number" step=".25" value="42.6"></div><div><label>Planning speed</label><input id="planningSpeed" type="number" value="55"></div><div><label>Safety reserve</label><input id="buffer" type="number" step=".25" value=".5"></div><div><label>Known delay (min)</label><input id="delay" type="number" value="0"></div></div>
@@ -96,7 +125,14 @@ function status(t,c='neutral'){$('status').textContent=t;$('status').className='
 
 function initMap(){
   map=L.map('map',{zoomControl:false,preferCanvas:true,fadeAnimation:true,zoomAnimation:true,markerZoomAnimation:true,inertia:true,inertiaDeceleration:3200}).setView(fallback,4);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:20,updateWhenIdle:true,keepBuffer:4,attribution:'© OpenStreetMap © CARTO'}).addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',{
+    subdomains:'abcd',maxZoom:20,maxNativeZoom:20,detectRetina:true,updateWhenIdle:true,keepBuffer:5,
+    attribution:'© OpenStreetMap © CARTO'
+  }).addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',{
+    subdomains:'abcd',maxZoom:20,maxNativeZoom:20,detectRetina:true,updateWhenIdle:true,keepBuffer:5,
+    pane:'overlayPane',opacity:.9
+  }).addTo(map);
   map.on('dragstart zoomstart',()=>{if(driving){followMode=false;$('resume').classList.add('visible')}});
   locate();
 }
@@ -104,7 +140,7 @@ function driverIcon(h=0){return L.divIcon({className:'',iconSize:[38,38],iconAnc
 function setDriver(lat,lon,h=0){currentPosition=[lat,lon];currentHeading=Number.isFinite(h)?h:0;if(!driverMarker)driverMarker=L.marker(currentPosition,{icon:driverIcon(currentHeading),zIndexOffset:1200}).addTo(map);else{driverMarker.setLatLng(currentPosition);driverMarker.setIcon(driverIcon(currentHeading))}}
 function locate(){if(!navigator.geolocation){status('LOCATION UNAVAILABLE');return}navigator.geolocation.getCurrentPosition(p=>{setDriver(p.coords.latitude,p.coords.longitude,p.coords.heading);map.setView(currentPosition,14);status('CURRENT LOCATION');$('summaryTitle').textContent='Ready from your current location';$('summarySub').textContent='Tap Plan Route to choose a destination'},()=>{status('LOCATION NEEDED');$('summaryTitle').textContent='Location permission needed';toast('Allow Precise Location for Road Clock.',true)},{enableHighAccuracy:true,timeout:12000,maximumAge:20000})}
 function clearLayers(){[routeUnder,routeLine,rangeCircle,destinationMarker,shutdownMarker].forEach(l=>{if(l&&map.hasLayer(l))map.removeLayer(l)});routeUnder=routeLine=rangeCircle=destinationMarker=shutdownMarker=null}
-function drawRoute(coords,end){clearLayers();routeCoords=coords;routeUnder=L.polyline(coords,{color:'#f4f8ff',weight:12,opacity:.9,lineCap:'round',lineJoin:'round'}).addTo(map);routeLine=L.polyline(coords,{color:'#2f82ff',weight:7,opacity:1,lineCap:'round',lineJoin:'round'}).addTo(map);destinationMarker=L.marker(end).addTo(map);if(currentPosition)rangeCircle=L.circle(currentPosition,{radius:legalMiles()*1609.344,color:'#5af27f',weight:3,fillColor:'#5af27f',fillOpacity:.07}).addTo(map);map.fitBounds(L.latLngBounds(coords),{paddingTopLeft:[65,170],paddingBottomRight:[65,200]})}
+function drawRoute(coords,end){clearLayers();routeCoords=coords;routeUnder=L.polyline(coords,{color:'#06101d',weight:14,opacity:.92,lineCap:'round',lineJoin:'round'}).addTo(map);routeLine=L.polyline(coords,{color:'#2f82ff',weight:8,opacity:1,lineCap:'round',lineJoin:'round'}).addTo(map);destinationMarker=L.marker(end).addTo(map);if(currentPosition)rangeCircle=L.circle(currentPosition,{radius:legalMiles()*1609.344,color:'#5af27f',weight:3,fillColor:'#5af27f',fillOpacity:.07}).addTo(map);map.fitBounds(L.latLngBounds(coords),{paddingTopLeft:[65,170],paddingBottomRight:[65,200]})}
 function setSheet(s){sheetState=Math.max(0,Math.min(2,s));$('sheet').className='sheet'+(sheetState===1?' mid':sheetState===2?' full':'');const lift=sheetState===0?'calc(var(--sheet-c) + 14px)':sheetState===1?'calc(var(--sheet-m) + 14px)':'calc(var(--sheet-f) + 14px)';$('status').style.bottom=lift}
 $('handleArea').addEventListener('pointerdown',e=>{dragging=true;dragStart=e.clientY;dragNow=e.clientY;$('handleArea').setPointerCapture(e.pointerId)});$('handleArea').addEventListener('pointermove',e=>{if(dragging)dragNow=e.clientY});$('handleArea').addEventListener('pointerup',()=>{if(!dragging)return;dragging=false;const d=dragNow-dragStart;if(d<-35)setSheet(sheetState+1);else if(d>35)setSheet(sheetState-1);else setSheet(sheetState===0?1:0)});
 $('clockToggle').addEventListener('click',()=>{const s=$('clockStack');s.classList.toggle('collapsed');$('clockToggle').textContent=s.classList.contains('collapsed')?'›':'‹'});
@@ -115,9 +151,91 @@ function nearestIdx(ll){let bi=0,bd=Infinity;routeCoords.forEach((p,i)=>{const d
 function remainingMiles(ll){if(!routeCoords.length)return trip.distance;const i=nearestIdx(ll);let m=map.distance(ll,routeCoords[i]);for(let x=i;x<routeCoords.length-1;x++)m+=map.distance(routeCoords[x],routeCoords[x+1]);return m/1609.344}
 function pointAlongRoute(targetMiles){let left=targetMiles*1609.344;for(let i=0;i<routeCoords.length-1;i++){const seg=map.distance(routeCoords[i],routeCoords[i+1]);if(seg>=left){const f=left/seg;return[routeCoords[i][0]+(routeCoords[i+1][0]-routeCoords[i][0])*f,routeCoords[i][1]+(routeCoords[i+1][1]-routeCoords[i][1])*f]}left-=seg}return routeCoords[routeCoords.length-1]}
 async function reverseName(latlng){try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng[0]}&lon=${latlng[1]}&zoom=12`);const d=await r.json();return d.address?.city||d.address?.town||d.address?.village||d.address?.county||'Near shutdown point'}catch(e){return'Near shutdown point'}}
-async function shutdownSuggestion(){const usable=Math.max(0,usableHours());const target=Math.min(trip.distance,Math.max(0,(usable-.15)*trip.speed));const pt=pointAlongRoute(target);if(shutdownMarker&&map.hasLayer(shutdownMarker))map.removeLayer(shutdownMarker);shutdownMarker=L.marker(pt).addTo(map).bindPopup('Recommended shutdown area');const place=await reverseName(pt);const remain=Math.max(0,usable-target/trip.speed);$('stopName').textContent=`${place} area`;$('stopDetail').textContent=`About ${Math.round(target)} miles ahead · roughly ${Math.round(remain*60)} minutes of drive time left at arrival`}
-function updateTrip(dest){$('summaryLabel').textContent='Current route';$('summaryTitle').textContent=dest;$('summarySub').textContent=`${Math.round(trip.distance)} mi · ${fmtHours(trip.duration)}`;$('distance').textContent=`${Math.round(trip.distance)} mi`;$('driveTime').textContent=fmtHours(trip.duration);$('rangeMiles').textContent=`${Math.round(legalMiles())} mi`;$('eta').textContent=new Date(Date.now()+(trip.duration+trip.delay/60)*3600000).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});updateClocks();status(trip.distance<=legalMiles()?'● WITHIN LEGAL RANGE':'● STOP REQUIRED',trip.distance<=legalMiles()?'':'stop');$('start').disabled=false}
+async function findTruckStops(pt){
+  const [lat,lon]=pt;
+  const query=`[out:json][timeout:20];
+  (
+    nwr(around:32000,${lat},${lon})["amenity"="fuel"]["hgv"!="no"];
+    nwr(around:32000,${lat},${lon})["highway"="services"];
+    nwr(around:32000,${lat},${lon})["highway"="rest_area"];
+    nwr(around:32000,${lat},${lon})["parking"="surface"]["hgv"="yes"];
+    nwr(around:32000,${lat},${lon})["amenity"="parking"]["hgv"="yes"];
+  );
+  out center tags;`;
+  const endpoints=[
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter'
+  ];
+  let data=null;
+  for(const endpoint of endpoints){
+    try{
+      const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'data='+encodeURIComponent(query)});
+      if(r.ok){data=await r.json();break}
+    }catch(e){}
+  }
+  if(!data?.elements?.length)return [];
+  return data.elements.map(e=>{
+    const p=e.type==='node'?[e.lat,e.lon]:[e.center?.lat,e.center?.lon];
+    if(!Number.isFinite(p[0])||!Number.isFinite(p[1]))return null;
+    const t=e.tags||{};
+    let score=0;
+    if(t.highway==='services')score+=7;
+    if(t.highway==='rest_area')score+=5;
+    if(t.hgv==='yes'||t.hgv==='designated')score+=6;
+    if(t.amenity==='fuel')score+=3;
+    if(t.parking==='surface')score+=2;
+    if(t.toilets==='yes'||t.amenity==='toilets')score+=1;
+    if(t.name)score+=1;
+    const d=map.distance(pt,p);
+    score-=d/8000;
+    return {point:p,tags:t,distance:d,score};
+  }).filter(Boolean).sort((a,b)=>b.score-a.score);
+}
+async function shutdownSuggestion(){
+  const usable=Math.max(0,usableHours());
+  const target=Math.min(trip.distance,Math.max(0,(usable-.25)*trip.speed));
+  const pt=pointAlongRoute(target);
+  $('stopName').textContent='Finding a suitable shutdown stop…';
+  $('stopDetail').textContent=`Searching near your ${Math.round(target)}-mile legal target`;
+  const stops=await findTruckStops(pt);
+  if(shutdownMarker&&map.hasLayer(shutdownMarker))map.removeLayer(shutdownMarker);
+  if(stops.length){
+    const best=stops[0];
+    shutdownMarker=L.marker(best.point).addTo(map).bindPopup(best.tags.name||'Recommended shutdown');
+    const remain=Math.max(0,usable-target/trip.speed);
+    const name=best.tags.name||best.tags.brand||(
+      best.tags.highway==='services'?'Highway service area':
+      best.tags.highway==='rest_area'?'Rest area':'Truck-accessible stop'
+    );
+    const details=[];
+    if(best.tags.hgv==='yes'||best.tags.hgv==='designated')details.push('HGV access tagged');
+    if(best.tags.amenity==='fuel')details.push('fuel');
+    if(best.tags.toilets==='yes')details.push('restrooms');
+    $('stopName').textContent=name;
+    $('stopDetail').textContent=`About ${Math.round(target)} route miles ahead · ${Math.round(remain*60)} min drive reserve${details.length?' · '+details.join(' · '):''}`;
+  }else{
+    shutdownMarker=L.marker(pt).addTo(map).bindPopup('Estimated shutdown area');
+    const place=await reverseName(pt);
+    $('stopName').textContent=`No verified stop found near ${place}`;
+    $('stopDetail').textContent=`Estimated target is about ${Math.round(target)} route miles ahead. Verify parking before committing.`;
+  }
+}
+function showEmptyState(){
+  $('sheet').classList.remove('hasRoute','mid','full');
+  $('sheet').classList.add('emptyState');
+  sheetState=0;
+  $('status').style.bottom='calc(250px + env(safe-area-inset-bottom) + 14px)';
+}
+function showPlannedState(dest){
+  $('sheet').classList.remove('emptyState');
+  $('sheet').classList.add('hasRoute');
+  $('plannedTitle').textContent=dest;
+  $('plannedSub').textContent=`${Math.round(trip.distance)} mi · ${fmtHours(trip.duration)}`;
+  setSheet(0);
+}
+function updateTrip(dest){showPlannedState(dest);$('distance').textContent=`${Math.round(trip.distance)} mi`;$('driveTime').textContent=fmtHours(trip.duration);$('rangeMiles').textContent=`${Math.round(legalMiles())} mi`;$('eta').textContent=new Date(Date.now()+(trip.duration+trip.delay/60)*3600000).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});updateClocks();status(trip.distance<=legalMiles()?'● WITHIN LEGAL RANGE':'● STOP REQUIRED',trip.distance<=legalMiles()?'':'stop');}
 function updateClocks(){$('driveCircle').textContent=fmtClock(trip.drive);$('dutyCircle').textContent=fmtClock(trip.duty);$('cycleCircle').textContent=fmtClock(trip.cycle);$('rangeMiles').textContent=`${Math.round(legalMiles())} mi`}
+$('planPrimary').addEventListener('click',()=>$('planner').classList.add('open'));
 $('plan').addEventListener('click',()=>$('planner').classList.add('open'));$('closePlanner').addEventListener('click',()=>$('planner').classList.remove('open'));
 $('calculate').addEventListener('click',async()=>{if(!currentPosition){$('plannerMessage').textContent='Current location unavailable.';return}const dest=$('destination').value.trim();if(!dest){$('plannerMessage').textContent='Enter a destination.';return}const b=$('calculate');b.disabled=true;b.textContent='Calculating…';try{const end=await geocode(dest),r=await routeBetween(currentPosition,end);trip={drive:+$('driveHours').value,duty:+$('dutyHours').value,cycle:+$('cycleHours').value,speed:+$('planningSpeed').value,buffer:+$('buffer').value,delay:+$('delay').value,distance:r.miles,duration:r.hours};initial={drive:trip.drive,duty:trip.duty,cycle:trip.cycle};steps=r.steps;drawRoute(r.coords,end);routeReady=true;updateTrip(dest);await shutdownSuggestion();$('planner').classList.remove('open');setSheet(0)}catch(e){$('plannerMessage').textContent=e.message+'. Check internet.'}finally{b.disabled=false;b.textContent='Calculate Route'}});
 function stepForPosition(ll){let best=null,bd=Infinity;steps.forEach((s,i)=>{const c=s.maneuver?.location;if(!c)return;const p=[c[1],c[0]],d=map.distance(ll,p);if(d<bd){bd=d;best={...s,index:i,distanceTo:d}}});return best}
@@ -131,9 +249,9 @@ function onPos(p){setDriver(p.coords.latitude,p.coords.longitude,p.coords.headin
 function startNav(){if(!routeReady)return;driving=true;followMode=true;startStamp=Date.now();$('start').textContent='END ROUTE';$('start').classList.add('running');$('turn').classList.add('visible');$('brand').classList.add('hidden');$('right').classList.add('routeActive');$('clockRail').classList.add('routeActive');$('resume').classList.remove('visible');watchId=navigator.geolocation.watchPosition(onPos,()=>toast('GPS unavailable.',true),{enableHighAccuracy:true,maximumAge:500,timeout:15000});timerId=setInterval(tickClocks,1000);wake();setSheet(0)}
 function stopNav(){driving=false;$('start').textContent='START ROUTE';$('start').classList.remove('running');$('turn').classList.remove('visible');$('brand').classList.remove('hidden');$('right').classList.remove('routeActive');$('clockRail').classList.remove('routeActive');$('resume').classList.remove('visible');if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}if(timerId){clearInterval(timerId);timerId=null}if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null}if(routeCoords.length)map.fitBounds(L.latLngBounds(routeCoords),{paddingTopLeft:[65,170],paddingBottomRight:[65,200]})}
 $('start').addEventListener('click',()=>driving?stopNav():startNav());$('resume').addEventListener('click',()=>{followMode=true;$('resume').classList.remove('visible')});$('recenter').addEventListener('click',()=>{followMode=true;$('resume').classList.remove('visible');if(currentPosition)map.setView(currentPosition,driving?17:14)});$('zoomIn').addEventListener('click',()=>map.zoomIn());$('zoomOut').addEventListener('click',()=>map.zoomOut());
-$('clear').addEventListener('click',()=>{if(driving)stopNav();clearLayers();routeReady=false;routeCoords=[];steps=[];$('start').disabled=true;$('summaryLabel').textContent='Current location';$('summaryTitle').textContent='Ready from your current location';$('summarySub').textContent='Tap Plan Route to choose a destination';$('eta').textContent=$('distance').textContent=$('driveTime').textContent='--';$('stopName').textContent='Plan a route to calculate';$('stopDetail').textContent='Road Clock will aim near the end of your usable drive clock with a safety reserve.';status('CURRENT LOCATION','neutral');if(currentPosition)map.setView(currentPosition,14)});
+$('clear').addEventListener('click',()=>{if(driving)stopNav();clearLayers();routeReady=false;routeCoords=[];steps=[];$('eta').textContent=$('distance').textContent=$('driveTime').textContent='--';$('stopName').textContent='Plan a route to calculate';$('stopDetail').textContent='Road Clock will aim near the end of your usable drive clock with a safety reserve.';status('CURRENT LOCATION','neutral');showEmptyState();if(currentPosition)map.setView(currentPosition,14)});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&driving&&!wakeLock)wake()});
-initMap();setSheet(0);updateClocks();if('serviceWorker'in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('./service-worker.js').then(r=>r.update()).catch(()=>{});
+initMap();showEmptyState();updateClocks();if('serviceWorker'in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('./service-worker.js').then(r=>r.update()).catch(()=>{});
 </script>
 </body>
 </html>

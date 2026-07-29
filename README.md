@@ -1,32 +1,22 @@
-# Road Clock Alpha 5
+# Road Clock Alpha 6
 
-## Included
+## New in this build
 
-- Polished dark vector-style basemap from CARTO/OpenStreetMap
-- Three circular Drive, Duty and Cycle clocks on the left
-- One-button clock rail collapse
-- Drive clock counts down while moving
-- Duty and Cycle clocks count down while navigation is active
-- Route-distance and ETA updates from live route progress
-- Turn banner changes from nearby route-step data
-- Manual map exploration pauses follow mode
-- Resume button restores navigation follow
-- Route line stays visible while driving
-- Shutdown target is placed near the end of the usable clock with a safety reserve
-- Current-location startup and draggable trip sheet
+- Cleaner Apple Maps-style empty state
+- One centered Plan Route button before a route exists
+- Start Route appears only after planning
+- Clear Route is hidden until a route exists
+- Bottom sheet fully fills the lower screen area
+- Sharper retina CARTO Voyager map with separate label layer
+- Stronger route rendering
+- Real OpenStreetMap/Overpass lookup near the shutdown target
+- Stop scoring favors highway service areas, rest areas, HGV access, fuel and parking tags
+- Falls back to an estimated area when no verified stop is found
 
-## Important limitations
+## Important stop-data note
 
-This is still a browser-based alpha, not an ELD, legal advice, or approved commercial navigation. Public routing and map services can be slow or unavailable. The shutdown result is an estimated area, not yet a verified coach/truck parking facility. Reliable speed limits, traffic, commercial restrictions, voice navigation and verified stops require production data providers and a native application.
+Truck-stop suggestions are based on publicly contributed OpenStreetMap tags. Road Clock shows available HGV-access, fuel, services and parking information, but drivers must still verify parking availability and coach suitability before committing.
 
 ## GitHub deployment
 
-Upload these five individual files to the top level of the GitHub repository, replacing the prior versions:
-
-- index.html
-- manifest.json
-- service-worker.js
-- netlify.toml
-- README.md
-
-Do not upload the ZIP itself.
+Upload the five individual files inside the ZIP to the top level of the repository, replacing the previous files.
