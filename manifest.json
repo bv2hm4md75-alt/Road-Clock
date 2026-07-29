@@ -1,5 +1,5 @@
 {
-  "name": "Road Clock Alpha 8",
+  "name": "Road Clock Alpha 9",
   "short_name": "Road Clock",
   "start_url": "./",
   "scope": "./",
@@ -7,5 +7,5 @@
   "orientation": "portrait",
   "background_color": "#07110b",
   "theme_color": "#07110b",
-  "description": "Road Clock navigation, HOS planning, and AI Co-Driver alpha."
+  "description": "Road Clock navigation and HOS planning alpha."
 }
