@@ -1,15 +1,25 @@
-# Road Clock Alpha 10.3
+# Road Clock Alpha 10.4
 
-## Fixed
+## Improved navigation tracking
 
-- ETA, distance, and drive time remain visible in the collapsed driving sheet
-- Programmatic MapLibre camera movement no longer triggers Resume
-- Follow mode pauses only after an actual user touch or drag
-- Resume and recenter reliably restore automatic tracking
-- ETA is formatted in the destination's local time zone
-- Daylight-saving and time-zone changes are reflected in arrival time
-- Drive Time remains elapsed travel time and is not altered by time-zone changes
+- GPS fixes update a target rather than moving the arrow instantly
+- The arrow is animated continuously between GPS updates
+- Position is snapped to the route when close enough
+- Heading changes are smoothed to reduce wobble
+- The camera follows the smoothed arrow at a 62-degree pitch
+- Camera motion runs continuously rather than restarting a new ease animation on every GPS update
 
-## Upload
+## ETA
 
-Replace the five repository files with the five individual files inside this ZIP.
+- ETA still uses the destination's local time zone
+- Only the arrival time is displayed, such as `9:18 AM`
+- Time-zone abbreviations are no longer shown in the compact trip panel
+
+## Voice AI Co-Driver
+
+- Push-to-talk microphone button
+- Spoken questions are transcribed into the AI Co-Driver
+- Answers are read aloud with speech synthesis
+- Graceful fallback when browser speech recognition is unavailable
+
+Voice recognition and speech playback depend on browser permissions and device support.

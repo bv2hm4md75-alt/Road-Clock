@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="./manifest.json">
 <link href="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.css" rel="stylesheet">
-<title>Road Clock Alpha 10.3</title>
+<title>Road Clock Alpha 10.4</title>
 <style>
 :root{
   --green:#55f17b;--amber:#ffc857;--blue:#59a7ff;--red:#ff6f7d;
@@ -73,6 +73,17 @@ label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{wi
 .themeChoices{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.themeChoices button{padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--control);color:var(--text)}.themeChoices button.active{border-color:var(--green);color:var(--green)}
 .aiMessages{height:55vh;overflow:auto;display:flex;flex-direction:column;gap:10px;margin:18px 0}.msg{max-width:86%;padding:12px;border-radius:16px}.msg.bot{background:var(--soft);align-self:flex-start}.msg.user{background:#1b873f;color:white;align-self:flex-end}.composer{display:grid;grid-template-columns:1fr auto;gap:8px}.send{border:0;border-radius:14px;padding:0 17px;background:var(--green);font-weight:900}
 .note{font-size:11px;color:var(--muted);line-height:1.45}
+
+.voiceRow{display:flex;gap:10px;margin-top:10px}
+.voiceButton{
+  flex:1;border:1px solid var(--green);border-radius:15px;padding:13px 14px;
+  background:linear-gradient(135deg,#1da84e,#116b34);color:white;font-weight:900
+}
+.voiceButton.listening{background:#8b1f2f;border-color:#ff6f7d;animation:pulseVoice 1.15s infinite}
+.voiceButton:disabled{opacity:.45}
+.voiceStatus{margin-top:8px;font-size:11px;color:var(--muted);text-align:center}
+@keyframes pulseVoice{0%,100%{box-shadow:0 0 0 0 rgba(255,111,125,.35)}50%{box-shadow:0 0 0 10px rgba(255,111,125,0)}}
+
 </style>
 </head>
 <body>
@@ -133,6 +144,8 @@ label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{wi
   <div class="head"><h2>AI Co-Driver</h2><button id="closeAI" class="close">✕</button></div>
   <div id="aiMessages" class="aiMessages"><div class="msg bot">Ask me about your ETA, clocks, legal reach, or shutdown stop.</div></div>
   <div class="composer"><input id="aiInput" placeholder="Ask about your trip"><button id="aiSend" class="send">Send</button></div>
+  <div class="voiceRow"><button id="voiceAI" class="voiceButton">🎙 TALK TO CO-DRIVER</button></div>
+  <div id="voiceStatus" class="voiceStatus">Tap once, speak naturally, and Road Clock will answer aloud.</div>
 </section>
 </div>
 
@@ -146,6 +159,9 @@ let trip={drive:10,duty:15,cycle:70,buffer:.5,distance:0,duration:0,originalDist
 let routeIndex=0,stepIndex=0,lastTick=null,timerId=null,sheetState=0;
 let userInteracting=false,ignoreMapInteractionUntil=0;
 let destinationTimeZone=null,destinationTimeZoneAbbr='';
+let gpsTarget=null,visualPosition=null,visualHeading=0,targetHeading=0;
+let motionFrame=null,lastMotionFrame=0,lastGpsUpdate=0;
+let speechRecognition=null,voiceListening=false;
 let driverMarker=null,destinationMarker=null,shutdownMarker=null;
 const fallback=[-98.5795,39.8283];
 
@@ -231,8 +247,16 @@ function initMap(){
 function locate(){
   if(!navigator.geolocation){$('status').textContent='LOCATION UNAVAILABLE';return}
   navigator.geolocation.getCurrentPosition(p=>{
-    currentPosition=[p.coords.longitude,p.coords.latitude];currentHeading=p.coords.heading||0;
-    setDriver(currentPosition,currentHeading);map.jumpTo({center:currentPosition,zoom:14});$('status').textContent='CURRENT LOCATION';
+    currentPosition=[p.coords.longitude,p.coords.latitude];
+    currentHeading=Number.isFinite(p.coords.heading)?normalizeHeading(p.coords.heading):0;
+    gpsTarget=[...currentPosition];
+    visualPosition=[...currentPosition];
+    targetHeading=currentHeading;
+    visualHeading=currentHeading;
+    setDriver(currentPosition,currentHeading);
+    map.jumpTo({center:currentPosition,zoom:14});
+    $('status').textContent='CURRENT LOCATION';
+    startMotionLoop();
   },()=>{$('status').textContent='LOCATION NEEDED'}, {enableHighAccuracy:true,timeout:12000,maximumAge:20000});
 }
 function driverElement(){
@@ -333,20 +357,72 @@ function forwardPoint(pos,bearing,meters){
   const lon2=lon1+Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(lat1),Math.cos(d)-Math.sin(lat1)*Math.sin(lat2));
   return[lon2*180/Math.PI,lat2*180/Math.PI];
 }
+
+function normalizeHeading(value){
+  let h=value%360;
+  if(h<0)h+=360;
+  return h;
+}
+function headingDelta(from,to){
+  return ((to-from+540)%360)-180;
+}
+function interpolateLngLat(a,b,factor){
+  return[
+    a[0]+(b[0]-a[0])*factor,
+    a[1]+(b[1]-a[1])*factor
+  ];
+}
+function startMotionLoop(){
+  if(motionFrame)return;
+  lastMotionFrame=performance.now();
+
+  const frame=now=>{
+    const dt=Math.min((now-lastMotionFrame)/1000,.05);
+    lastMotionFrame=now;
+
+    if(gpsTarget){
+      if(!visualPosition)visualPosition=[...gpsTarget];
+
+      // Faster at highway speed, gentler when crawling.
+      const positionRate=currentSpeed>45?5.4:currentSpeed>10?4.2:3.0;
+      const positionFactor=1-Math.exp(-positionRate*dt);
+      visualPosition=interpolateLngLat(visualPosition,gpsTarget,positionFactor);
+
+      const headingFactor=1-Math.exp(-5.0*dt);
+      visualHeading=normalizeHeading(
+        visualHeading+headingDelta(visualHeading,targetHeading)*headingFactor
+      );
+
+      setDriver(visualPosition,visualHeading);
+
+      if(driving&&followMode){
+        const lookAhead=Math.max(150,Math.min(520,currentSpeed*7.5));
+        const cameraTarget=forwardPoint(visualPosition,visualHeading,lookAhead);
+        ignoreMapInteractionUntil=Date.now()+120;
+        map.jumpTo({
+          center:cameraTarget,
+          zoom:17,
+          pitch:62,
+          bearing:visualHeading
+        });
+      }
+    }
+
+    if(driving||gpsTarget){
+      motionFrame=requestAnimationFrame(frame);
+    }else{
+      motionFrame=null;
+    }
+  };
+
+  motionFrame=requestAnimationFrame(frame);
+}
+
 function smoothCamera(matched){
-  if(!followMode)return;
-  const look=Math.max(180,Math.min(500,currentSpeed*8));
-  const target=forwardPoint(matched.point,currentHeading||0,look);
-  ignoreMapInteractionUntil=Date.now()+900;
-  map.easeTo({
-    center:target,
-    zoom:17,
-    pitch:62,
-    bearing:currentHeading||0,
-    duration:700,
-    easing:t=>1-Math.pow(1-t,3),
-    essential:true
-  });
+  if(!followMode||!matched)return;
+  gpsTarget=matched.point;
+  targetHeading=Number.isFinite(currentHeading)?currentHeading:targetHeading;
+  startMotionLoop();
 }
 function nextStep(pos){
   if(!routeSteps.length)return null;
@@ -387,8 +463,7 @@ function formatDestinationETA(hoursFromNow){
   const arrival=new Date(Date.now()+hoursFromNow*3600000);
   const opts={hour:'numeric',minute:'2-digit'};
   if(destinationTimeZone)opts.timeZone=destinationTimeZone;
-  const time=arrival.toLocaleTimeString([],opts);
-  return destinationTimeZoneAbbr?`${time} ${destinationTimeZoneAbbr}`:time;
+  return arrival.toLocaleTimeString([],opts);
 }
 
 function updateMetrics(){
@@ -430,9 +505,31 @@ function tick(){
   trip.duty=Math.max(0,trip.duty-d);trip.cycle=Math.max(0,trip.cycle-d);if(!drivePaused&&currentSpeed>3)trip.drive=Math.max(0,trip.drive-d);updateClocks();
 }
 function onPosition(p){
-  currentPosition=[p.coords.longitude,p.coords.latitude];currentHeading=Number.isFinite(p.coords.heading)?p.coords.heading:currentHeading;
-  currentSpeed=Number.isFinite(p.coords.speed)?Math.max(0,p.coords.speed*2.236936):currentSpeed;$('speedNow').textContent=Math.round(currentSpeed);setDriver(currentPosition,currentHeading);
-  if(driving){const matched=matchRoute(currentPosition),remaining=remainingMeters(currentPosition)/1609.344;trip.distance=remaining;trip.duration=remaining*(trip.originalDuration/Math.max(trip.originalDistance,1));updateMetrics();updateTurn(currentPosition);smoothCamera(matched)}
+  const raw=[p.coords.longitude,p.coords.latitude];
+  currentHeading=Number.isFinite(p.coords.heading)?normalizeHeading(p.coords.heading):currentHeading;
+  currentSpeed=Number.isFinite(p.coords.speed)?Math.max(0,p.coords.speed*2.236936):currentSpeed;
+  $('speedNow').textContent=Math.round(currentSpeed);
+
+  if(driving&&routeCoords.length){
+    const matched=matchRoute(raw);
+    currentPosition=matched.distance<120?matched.point:raw;
+    gpsTarget=[...currentPosition];
+    targetHeading=currentHeading;
+
+    const remaining=remainingMeters(currentPosition)/1609.344;
+    trip.distance=remaining;
+    trip.duration=remaining*(trip.originalDuration/Math.max(trip.originalDistance,1));
+    updateMetrics();
+    updateTurn(currentPosition);
+    smoothCamera({point:currentPosition});
+  }else{
+    currentPosition=raw;
+    gpsTarget=[...raw];
+    targetHeading=currentHeading;
+    startMotionLoop();
+  }
+
+  lastGpsUpdate=Date.now();
 }
 function start(){
   driving=true;
@@ -443,6 +540,11 @@ function start(){
   lastTick=Date.now();
   userInteracting=false;
   ignoreMapInteractionUntil=Date.now()+1200;
+  visualPosition=currentPosition?[...currentPosition]:visualPosition;
+  gpsTarget=currentPosition?[...currentPosition]:gpsTarget;
+  visualHeading=currentHeading||visualHeading;
+  targetHeading=currentHeading||targetHeading;
+  startMotionLoop();
   $('sheet').classList.add('driving');
   $('turn').classList.add('visible');
   $('brand').style.display='none';
@@ -471,6 +573,8 @@ function stop(){
   $('resume').classList.remove('visible');
   if(watchId!==null)navigator.geolocation.clearWatch(watchId);
   if(timerId)clearInterval(timerId);
+  if(motionFrame){cancelAnimationFrame(motionFrame);motionFrame=null}
+  gpsTarget=currentPosition?[...currentPosition]:null;
   ignoreMapInteractionUntil=Date.now()+700;
   map.easeTo({pitch:0,bearing:0,duration:500});
 }
@@ -498,7 +602,11 @@ $('resume').onclick=()=>{
   userInteracting=false;
   ignoreMapInteractionUntil=Date.now()+900;
   $('resume').classList.remove('visible');
-  if(currentPosition&&driving)smoothCamera(matchRoute(currentPosition));
+  if(currentPosition&&driving){
+    gpsTarget=[...currentPosition];
+    smoothCamera({point:currentPosition});
+    startMotionLoop();
+  }
 };
 $('recenter').onclick=()=>{
   followMode=true;
@@ -519,9 +627,86 @@ $('zoomIn').onclick=()=>map.zoomIn();$('zoomOut').onclick=()=>map.zoomOut();$('c
 $('themeButton').onclick=()=>$('settings').classList.add('open');$('closeSettings').onclick=()=>$('settings').classList.remove('open');document.querySelectorAll('[data-theme]').forEach(b=>b.onclick=()=>applyTheme(b.dataset.theme));
 $('tomtomKey').value=localStorage.getItem('tomtomKey')||'';$('saveKey').onclick=()=>{localStorage.setItem('tomtomKey',$('tomtomKey').value.trim());$('settings').classList.remove('open')};
 $('aiButton').onclick=()=>$('aiPanel').classList.add('open');$('closeAI').onclick=()=>$('aiPanel').classList.remove('open');
+
+function speakCoDriver(text){
+  if(!('speechSynthesis' in window))return;
+  window.speechSynthesis.cancel();
+  const utterance=new SpeechSynthesisUtterance(text);
+  utterance.rate=1.02;
+  utterance.pitch=1;
+  utterance.volume=1;
+  window.speechSynthesis.speak(utterance);
+}
+function appendAIMessage(text,type){
+  const el=document.createElement('div');
+  el.className=`msg ${type}`;
+  el.textContent=text;
+  $('aiMessages').appendChild(el);
+  $('aiMessages').scrollTop=$('aiMessages').scrollHeight;
+}
+function answerVoiceQuestion(question){
+  appendAIMessage(question,'user');
+  const answer=ai(question);
+  appendAIMessage(answer,'bot');
+  speakCoDriver(answer);
+}
+function setupVoiceAI(){
+  const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!Recognition){
+    $('voiceAI').disabled=true;
+    $('voiceStatus').textContent='Voice recognition is not available in this browser. You can still use spoken answers after typing.';
+    return;
+  }
+
+  speechRecognition=new Recognition();
+  speechRecognition.lang='en-US';
+  speechRecognition.interimResults=false;
+  speechRecognition.continuous=false;
+
+  speechRecognition.onstart=()=>{
+    voiceListening=true;
+    $('voiceAI').classList.add('listening');
+    $('voiceAI').textContent='■ LISTENING… TAP TO STOP';
+    $('voiceStatus').textContent='Listening…';
+  };
+
+  speechRecognition.onresult=e=>{
+    const text=e.results?.[0]?.[0]?.transcript?.trim();
+    if(text)answerVoiceQuestion(text);
+  };
+
+  speechRecognition.onerror=e=>{
+    $('voiceStatus').textContent=e.error==='not-allowed'
+      ?'Microphone permission was denied.'
+      :'I could not hear that clearly. Tap and try again.';
+  };
+
+  speechRecognition.onend=()=>{
+    voiceListening=false;
+    $('voiceAI').classList.remove('listening');
+    $('voiceAI').textContent='🎙 TALK TO CO-DRIVER';
+    if($('voiceStatus').textContent==='Listening…'){
+      $('voiceStatus').textContent='Tap once, speak naturally, and Road Clock will answer aloud.';
+    }
+  };
+
+  $('voiceAI').onclick=()=>{
+    if(voiceListening){
+      speechRecognition.stop();
+    }else{
+      try{speechRecognition.start()}catch(e){}
+    }
+  };
+}
+
 function ai(text){const q=text.toLowerCase();if(q.includes('stop'))return $('stopName').textContent+'. '+$('stopDetail').textContent;if(q.includes('eta'))return `ETA ${$('eta').textContent}, ${$('distance').textContent} remaining.`;if(q.includes('clock'))return `Drive ${fmtHours(trip.drive)}, Duty ${fmtHours(trip.duty)}, Cycle ${fmtHours(trip.cycle)}.`;return routeReady?`You have ${$('distance').textContent} remaining and an ETA of ${$('eta').textContent}.`:'Plan a route first.'}
-$('aiSend').onclick=()=>{const q=$('aiInput').value.trim();if(!q)return;const u=document.createElement('div');u.className='msg user';u.textContent=q;$('aiMessages').appendChild(u);const a=document.createElement('div');a.className='msg bot';a.textContent=ai(q);$('aiMessages').appendChild(a);$('aiInput').value=''};
-initMap();updateClocks();
+$('aiSend').onclick=()=>{
+  const q=$('aiInput').value.trim();
+  if(!q)return;
+  answerVoiceQuestion(q);
+  $('aiInput').value='';
+};
+initMap();updateClocks();setupVoiceAI();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').then(r=>r.update()).catch(()=>{});
 </script>
 </body>
