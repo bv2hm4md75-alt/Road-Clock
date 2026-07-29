@@ -1,11 +1,10 @@
 {
-  "name": "Road Clock Alpha 9",
+  "name": "Road Clock Alpha 10",
   "short_name": "Road Clock",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#07110b",
-  "theme_color": "#07110b",
-  "description": "Road Clock navigation and HOS planning alpha."
+  "theme_color": "#07110b"
 }

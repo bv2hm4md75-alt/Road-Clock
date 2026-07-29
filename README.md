@@ -1,15 +1,23 @@
-# Road Clock Alpha 9.1 Fixed
+# Road Clock Alpha 10
 
-- Smoother interpolated camera follow
-- Map dragging pauses follow until Resume is tapped
-- GPS is matched to the route before calculating progress
-- Next-turn distance is measured along the route
-- Named shutdown stops are scored by route position and off-route distance
-- Stops more than roughly three miles off route are rejected
+## Major change
 
-This remains a browser alpha using public routing and OpenStreetMap data.
+Alpha 10 replaces Leaflet with MapLibre GL.
 
+- True pitch and bearing navigation camera
+- 62-degree forward-driving angle
+- Heading-aligned route following
+- Route-snapped distance and maneuver calculations
+- Map exploration pauses follow until Resume
+- Optional TomTom TRUCK_STOP category search
+- OpenFreeMap vector map styles
+- Light, Dark, and System themes
+- AI Co-Driver and HOS clocks remain included
 
-## Fix
+## TomTom setup
 
-Corrected a JavaScript syntax error that prevented the map, GPS, and controls from starting.
+Open Road Clock Settings, paste a TomTom API key, and save it. Without a key, Alpha 10 does not pretend that an unverified county or generic area is a dependable shutdown stop.
+
+## Important limitation
+
+This remains a browser alpha. Production navigation should move to a native mobile app and a commercial navigation SDK.
