@@ -1,25 +1,24 @@
-# Road Clock Alpha 10.4
+# Road Clock Alpha 10.5
 
-## Improved navigation tracking
+## Arrow and camera tracking
 
-- GPS fixes update a target rather than moving the arrow instantly
-- The arrow is animated continuously between GPS updates
-- Position is snapped to the route when close enough
-- Heading changes are smoothed to reduce wobble
-- The camera follows the smoothed arrow at a 62-degree pitch
-- Camera motion runs continuously rather than restarting a new ease animation on every GPS update
+- Adds short-range dead-reckoning prediction between GPS updates
+- Predicts forward motion from live speed and heading
+- Snaps predicted position back to the route when appropriate
+- Uses faster catch-up interpolation to reduce arrow lag
+- Smooths heading without making the arrow trail far behind
+- Camera follows the predicted, smoothed position
+- Geolocation requests now use zero cached age
 
-## ETA
+## AI Co-Driver stability
 
-- ETA still uses the destination's local time zone
-- Only the arrival time is displayed, such as `9:18 AM`
-- Time-zone abbreviations are no longer shown in the compact trip panel
+- AI opens as a compact voice overlay instead of a full-screen panel
+- Speech recognition is created only when the microphone is tapped
+- Each question uses a fresh recognition session
+- Eight-second timeout prevents frozen microphone sessions
+- Spoken answers remain enabled
+- Typed AI remains available as a fallback
 
-## Voice AI Co-Driver
+## Upload
 
-- Push-to-talk microphone button
-- Spoken questions are transcribed into the AI Co-Driver
-- Answers are read aloud with speech synthesis
-- Graceful fallback when browser speech recognition is unavailable
-
-Voice recognition and speech playback depend on browser permissions and device support.
+Replace the five repository files with the files inside this ZIP.

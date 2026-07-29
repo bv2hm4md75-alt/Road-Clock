@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="./manifest.json">
 <link href="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.css" rel="stylesheet">
-<title>Road Clock Alpha 10.4</title>
+<title>Road Clock Alpha 10.5</title>
 <style>
 :root{
   --green:#55f17b;--amber:#ffc857;--blue:#59a7ff;--red:#ff6f7d;
@@ -84,6 +84,28 @@ label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{wi
 .voiceStatus{margin-top:8px;font-size:11px;color:var(--muted);text-align:center}
 @keyframes pulseVoice{0%,100%{box-shadow:0 0 0 0 rgba(255,111,125,.35)}50%{box-shadow:0 0 0 10px rgba(255,111,125,0)}}
 
+
+.voiceOverlay{
+  position:fixed;z-index:80;left:14px;right:14px;bottom:calc(18px + env(safe-area-inset-bottom));
+  display:none;align-items:center;gap:12px;padding:14px;border-radius:20px;
+  background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(22px);
+  box-shadow:0 16px 40px rgba(0,0,0,.42)
+}
+.voiceOverlay.open{display:flex}
+.voiceOrb{
+  width:54px;height:54px;border-radius:50%;display:grid;place-items:center;
+  background:linear-gradient(135deg,#55f17b,#14813d);color:#07110b;font-size:24px;font-weight:900;
+  flex:0 0 auto
+}
+.voiceOrb.listening{background:#a3263a;color:white;animation:pulseVoice 1.1s infinite}
+.voiceCopy{flex:1;min-width:0}
+.voiceCopy b{display:block;font-size:15px}
+.voiceCopy span{display:block;margin-top:4px;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.voiceClose{
+  width:40px;height:40px;border-radius:50%;border:1px solid var(--line);
+  background:var(--control);color:var(--text)
+}
+
 </style>
 </head>
 <body>
@@ -147,6 +169,13 @@ label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{wi
   <div class="voiceRow"><button id="voiceAI" class="voiceButton">🎙 TALK TO CO-DRIVER</button></div>
   <div id="voiceStatus" class="voiceStatus">Tap once, speak naturally, and Road Clock will answer aloud.</div>
 </section>
+
+<section id="voiceOverlay" class="voiceOverlay" aria-live="polite">
+  <button id="voiceOrb" class="voiceOrb">🎙</button>
+  <div class="voiceCopy"><b id="voiceTitle">AI Co-Driver</b><span id="voiceOverlayStatus">Tap the microphone and speak</span></div>
+  <button id="voiceOverlayClose" class="voiceClose">✕</button>
+</section>
+
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
@@ -162,6 +191,8 @@ let destinationTimeZone=null,destinationTimeZoneAbbr='';
 let gpsTarget=null,visualPosition=null,visualHeading=0,targetHeading=0;
 let motionFrame=null,lastMotionFrame=0,lastGpsUpdate=0;
 let speechRecognition=null,voiceListening=false;
+let lastRawGps=null,lastRawGpsTime=0,predictedTarget=null;
+let lastSpokenAnswer='';
 let driverMarker=null,destinationMarker=null,shutdownMarker=null;
 const fallback=[-98.5795,39.8283];
 
@@ -381,14 +412,30 @@ function startMotionLoop(){
     lastMotionFrame=now;
 
     if(gpsTarget){
-      if(!visualPosition)visualPosition=[...gpsTarget];
+      const elapsedSinceGps=Math.max(0,(Date.now()-lastGpsUpdate)/1000);
+      const speedMps=Math.max(0,currentSpeed/2.236936);
 
-      // Faster at highway speed, gentler when crawling.
-      const positionRate=currentSpeed>45?5.4:currentSpeed>10?4.2:3.0;
+      // Predict slightly ahead between GPS fixes. Cap prediction to avoid runaway drift.
+      const predictionMeters=Math.min(70,speedMps*Math.min(elapsedSinceGps,2.2));
+      predictedTarget=predictionMeters>1
+        ?forwardPoint(gpsTarget,targetHeading,predictionMeters)
+        :gpsTarget;
+
+      if(routeCoords.length&&driving){
+        const predictedMatch=matchRoute(predictedTarget);
+        if(predictedMatch.distance<90)predictedTarget=predictedMatch.point;
+      }
+
+      if(!visualPosition)visualPosition=[...predictedTarget];
+
+      // Fast catch-up with a softer finish, minimizing visible lag.
+      const gap=dist(visualPosition,predictedTarget);
+      const positionRate=gap>35?14:gap>12?10:7;
       const positionFactor=1-Math.exp(-positionRate*dt);
-      visualPosition=interpolateLngLat(visualPosition,gpsTarget,positionFactor);
+      visualPosition=interpolateLngLat(visualPosition,predictedTarget,positionFactor);
 
-      const headingFactor=1-Math.exp(-5.0*dt);
+      const headingRate=currentSpeed>20?9:6;
+      const headingFactor=1-Math.exp(-headingRate*dt);
       visualHeading=normalizeHeading(
         visualHeading+headingDelta(visualHeading,targetHeading)*headingFactor
       );
@@ -396,12 +443,12 @@ function startMotionLoop(){
       setDriver(visualPosition,visualHeading);
 
       if(driving&&followMode){
-        const lookAhead=Math.max(150,Math.min(520,currentSpeed*7.5));
+        const lookAhead=Math.max(175,Math.min(560,currentSpeed*7.8));
         const cameraTarget=forwardPoint(visualPosition,visualHeading,lookAhead);
-        ignoreMapInteractionUntil=Date.now()+120;
+        ignoreMapInteractionUntil=Date.now()+100;
         map.jumpTo({
           center:cameraTarget,
-          zoom:17,
+          zoom:17.35,
           pitch:62,
           bearing:visualHeading
         });
@@ -506,8 +553,17 @@ function tick(){
 }
 function onPosition(p){
   const raw=[p.coords.longitude,p.coords.latitude];
-  currentHeading=Number.isFinite(p.coords.heading)?normalizeHeading(p.coords.heading):currentHeading;
-  currentSpeed=Number.isFinite(p.coords.speed)?Math.max(0,p.coords.speed*2.236936):currentSpeed;
+  lastRawGps=raw;
+  lastRawGpsTime=Date.now();
+
+  currentHeading=Number.isFinite(p.coords.heading)
+    ?normalizeHeading(p.coords.heading)
+    :currentHeading;
+
+  currentSpeed=Number.isFinite(p.coords.speed)
+    ?Math.max(0,p.coords.speed*2.236936)
+    :currentSpeed;
+
   $('speedNow').textContent=Math.round(currentSpeed);
 
   if(driving&&routeCoords.length){
@@ -521,7 +577,7 @@ function onPosition(p){
     trip.duration=remaining*(trip.originalDuration/Math.max(trip.originalDistance,1));
     updateMetrics();
     updateTurn(currentPosition);
-    smoothCamera({point:currentPosition});
+    startMotionLoop();
   }else{
     currentPosition=raw;
     gpsTarget=[...raw];
@@ -555,7 +611,7 @@ function start(){
   watchId=navigator.geolocation.watchPosition(
     onPosition,
     ()=>{},
-    {enableHighAccuracy:true,maximumAge:500,timeout:15000}
+    {enableHighAccuracy:true,maximumAge:0,timeout:10000}
   );
   timerId=setInterval(tick,1000);
   setSheet(0);
@@ -626,7 +682,15 @@ $('recenter').onclick=()=>{
 $('zoomIn').onclick=()=>map.zoomIn();$('zoomOut').onclick=()=>map.zoomOut();$('clockToggle').onclick=()=>{$('clockStack').classList.toggle('collapsed');$('clockToggle').textContent=$('clockStack').classList.contains('collapsed')?'›':'‹'};
 $('themeButton').onclick=()=>$('settings').classList.add('open');$('closeSettings').onclick=()=>$('settings').classList.remove('open');document.querySelectorAll('[data-theme]').forEach(b=>b.onclick=()=>applyTheme(b.dataset.theme));
 $('tomtomKey').value=localStorage.getItem('tomtomKey')||'';$('saveKey').onclick=()=>{localStorage.setItem('tomtomKey',$('tomtomKey').value.trim());$('settings').classList.remove('open')};
-$('aiButton').onclick=()=>$('aiPanel').classList.add('open');$('closeAI').onclick=()=>$('aiPanel').classList.remove('open');
+$('aiButton').onclick=()=>{
+  $('voiceOverlay').classList.add('open');
+  $('voiceOverlayStatus').textContent='Tap the microphone and speak';
+};
+$('voiceOverlayClose').onclick=()=>{
+  if(voiceListening&&speechRecognition){try{speechRecognition.stop()}catch(e){}}
+  $('voiceOverlay').classList.remove('open');
+};
+$('closeAI').onclick=()=>$('aiPanel').classList.remove('open');
 
 function speakCoDriver(text){
   if(!('speechSynthesis' in window))return;
@@ -652,49 +716,87 @@ function answerVoiceQuestion(question){
 }
 function setupVoiceAI(){
   const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+
   if(!Recognition){
-    $('voiceAI').disabled=true;
-    $('voiceStatus').textContent='Voice recognition is not available in this browser. You can still use spoken answers after typing.';
+    $('voiceOrb').disabled=true;
+    $('voiceOverlayStatus').textContent='Voice input is unavailable here. Open typed AI instead.';
+    $('voiceOrb').onclick=()=>$('aiPanel').classList.add('open');
     return;
   }
 
-  speechRecognition=new Recognition();
-  speechRecognition.lang='en-US';
-  speechRecognition.interimResults=false;
-  speechRecognition.continuous=false;
+  const beginListening=()=>{
+    if(voiceListening)return;
 
-  speechRecognition.onstart=()=>{
-    voiceListening=true;
-    $('voiceAI').classList.add('listening');
-    $('voiceAI').textContent='■ LISTENING… TAP TO STOP';
-    $('voiceStatus').textContent='Listening…';
-  };
+    // Create a fresh recognition instance each time. This avoids iOS sessions freezing.
+    speechRecognition=new Recognition();
+    speechRecognition.lang='en-US';
+    speechRecognition.interimResults=false;
+    speechRecognition.continuous=false;
+    speechRecognition.maxAlternatives=1;
 
-  speechRecognition.onresult=e=>{
-    const text=e.results?.[0]?.[0]?.transcript?.trim();
-    if(text)answerVoiceQuestion(text);
-  };
+    let finished=false;
+    const cleanup=()=>{
+      if(finished)return;
+      finished=true;
+      voiceListening=false;
+      $('voiceOrb').classList.remove('listening');
+      $('voiceOrb').textContent='🎙';
+    };
 
-  speechRecognition.onerror=e=>{
-    $('voiceStatus').textContent=e.error==='not-allowed'
-      ?'Microphone permission was denied.'
-      :'I could not hear that clearly. Tap and try again.';
-  };
+    speechRecognition.onstart=()=>{
+      voiceListening=true;
+      $('voiceOrb').classList.add('listening');
+      $('voiceOrb').textContent='■';
+      $('voiceOverlayStatus').textContent='Listening…';
+    };
 
-  speechRecognition.onend=()=>{
-    voiceListening=false;
-    $('voiceAI').classList.remove('listening');
-    $('voiceAI').textContent='🎙 TALK TO CO-DRIVER';
-    if($('voiceStatus').textContent==='Listening…'){
-      $('voiceStatus').textContent='Tap once, speak naturally, and Road Clock will answer aloud.';
+    speechRecognition.onresult=e=>{
+      const text=e.results?.[0]?.[0]?.transcript?.trim();
+      if(text){
+        $('voiceOverlayStatus').textContent=`You said: ${text}`;
+        const answer=ai(text);
+        lastSpokenAnswer=answer;
+        $('voiceTitle').textContent='Co-Driver';
+        $('voiceOverlayStatus').textContent=answer;
+        speakCoDriver(answer);
+      }
+      cleanup();
+    };
+
+    speechRecognition.onerror=e=>{
+      const message=e.error==='not-allowed'
+        ?'Microphone permission was denied.'
+        :e.error==='no-speech'
+          ?'I did not hear anything. Tap and try again.'
+          :'Voice input stopped. Tap and try again.';
+      $('voiceOverlayStatus').textContent=message;
+      cleanup();
+    };
+
+    speechRecognition.onend=cleanup;
+
+    // Hard timeout prevents a stuck listening session.
+    setTimeout(()=>{
+      if(voiceListening&&speechRecognition){
+        try{speechRecognition.stop()}catch(e){}
+        $('voiceOverlayStatus').textContent='Listening timed out. Tap and try again.';
+        cleanup();
+      }
+    },8000);
+
+    try{
+      speechRecognition.start();
+    }catch(e){
+      $('voiceOverlayStatus').textContent='Voice input is busy. Tap again in a moment.';
+      cleanup();
     }
   };
 
-  $('voiceAI').onclick=()=>{
-    if(voiceListening){
-      speechRecognition.stop();
+  $('voiceOrb').onclick=()=>{
+    if(voiceListening&&speechRecognition){
+      try{speechRecognition.stop()}catch(e){}
     }else{
-      try{speechRecognition.start()}catch(e){}
+      beginListening();
     }
   };
 }
