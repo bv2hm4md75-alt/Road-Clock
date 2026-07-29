@@ -1,23 +1,16 @@
-# Road Clock Alpha 10
+# Road Clock Alpha 10.2
 
-## Major change
+## Fixed
 
-Alpha 10 replaces Leaflet with MapLibre GL.
+- Prevents the MapLibre error: `Style is not done loading`
+- Route drawing now waits for `load` or `style.load`
+- Route layers are safely recreated after light/dark theme changes
+- Default clocks are now:
+  - Drive: 10:00
+  - Duty: 15:00
+  - Cycle: 70:00
+- Route calculation waits for the vector map before drawing
 
-- True pitch and bearing navigation camera
-- 62-degree forward-driving angle
-- Heading-aligned route following
-- Route-snapped distance and maneuver calculations
-- Map exploration pauses follow until Resume
-- Optional TomTom TRUCK_STOP category search
-- OpenFreeMap vector map styles
-- Light, Dark, and System themes
-- AI Co-Driver and HOS clocks remain included
+## Upload
 
-## TomTom setup
-
-Open Road Clock Settings, paste a TomTom API key, and save it. Without a key, Alpha 10 does not pretend that an unverified county or generic area is a dependable shutdown stop.
-
-## Important limitation
-
-This remains a browser alpha. Production navigation should move to a native mobile app and a commercial navigation SDK.
+Replace the five repository files with the five individual files inside this ZIP.

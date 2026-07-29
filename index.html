@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="./manifest.json">
 <link href="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.css" rel="stylesheet">
-<title>Road Clock Alpha 10</title>
+<title>Road Clock Alpha 10.2</title>
 <style>
 :root{
   --green:#55f17b;--amber:#ffc857;--blue:#59a7ff;--red:#ff6f7d;
@@ -81,9 +81,9 @@ label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{wi
   <button id="zoomIn" class="round">+</button><button id="zoomOut" class="round">−</button>
 </div>
 <div id="clockRail" class="clockRail"><button id="clockToggle" class="clockToggle">‹</button><div id="clockStack" class="clockStack">
-  <div class="clock drive"><div><small>DRIVE</small><b id="driveClock">6:42</b></div></div>
-  <div class="clock duty"><div><small>DUTY</small><b id="dutyClock">9:15</b></div></div>
-  <div class="clock cycle"><div><small>CYCLE</small><b id="cycleClock">42:37</b></div></div>
+  <div class="clock drive"><div><small>DRIVE</small><b id="driveClock">10:00</b></div></div>
+  <div class="clock duty"><div><small>DUTY</small><b id="dutyClock">15:00</b></div></div>
+  <div class="clock cycle"><div><small>CYCLE</small><b id="cycleClock">70:00</b></div></div>
 </div></div>
 <div id="status" class="status">LOCATING…</div>
 <button id="themeButton" class="round themeBtn">◐</button><button id="aiButton" class="round aiBtn">AI CO-DRIVER</button>
@@ -108,9 +108,9 @@ label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{wi
   <div class="card">
     <label>Destination</label><input id="destination" placeholder="City, venue, address or ZIP code">
     <div class="grid">
-      <div><label>Drive remaining</label><input id="driveHours" type="number" step=".25" value="6.7"></div>
-      <div><label>Duty remaining</label><input id="dutyHours" type="number" step=".25" value="9.25"></div>
-      <div><label>Cycle remaining</label><input id="cycleHours" type="number" step=".25" value="42.6"></div>
+      <div><label>Drive remaining</label><input id="driveHours" type="number" step=".25" value="10"></div>
+      <div><label>Duty remaining</label><input id="dutyHours" type="number" step=".25" value="15"></div>
+      <div><label>Cycle remaining</label><input id="cycleHours" type="number" step=".25" value="70"></div>
       <div><label>Safety reserve</label><input id="buffer" type="number" step=".25" value=".5"></div>
     </div>
     <button id="calculate" class="primary">CALCULATE ROUTE</button><p id="plannerMessage" class="note">Starts from your current GPS position.</p>
@@ -135,7 +135,8 @@ label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{wi
 const $=id=>document.getElementById(id);
 let map,currentPosition=null,currentHeading=0,currentSpeed=0,watchId=null,wakeLock=null;
 let routeCoords=[],routeSteps=[],routeReady=false,driving=false,followMode=true,drivePaused=false;
-let trip={drive:6.7,duty:9.25,cycle:42.6,buffer:.5,distance:0,duration:0,originalDistance:0,originalDuration:0};
+let mapReady=false,pendingRouteDraw=null;
+let trip={drive:10,duty:15,cycle:70,buffer:.5,distance:0,duration:0,originalDistance:0,originalDuration:0};
 let routeIndex=0,stepIndex=0,lastTick=null,timerId=null,sheetState=0;
 let driverMarker=null,destinationMarker=null,shutdownMarker=null;
 const fallback=[-98.5795,39.8283];
@@ -145,15 +146,67 @@ function fmtHours(h){const m=Math.max(0,Math.round(h*60));return `${Math.floor(m
 function usableHours(){return Math.max(0,Math.min(trip.drive,trip.duty,trip.cycle)-trip.buffer)}
 function updateClocks(){$('driveClock').textContent=fmtClock(trip.drive);$('dutyClock').textContent=fmtClock(trip.duty);$('cycleClock').textContent=fmtClock(trip.cycle)}
 function themeChoice(){try{return localStorage.getItem('rcTheme')||'system'}catch(e){return'system'}}
-function applyTheme(choice){const resolved=choice==='system'?(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):choice;document.documentElement.dataset.theme=resolved;try{localStorage.setItem('rcTheme',choice)}catch(e){};document.querySelectorAll('[data-theme]').forEach(b=>b.classList.toggle('active',b.dataset.theme===choice));if(map)map.setStyle(resolved==='dark'?'https://tiles.openfreemap.org/styles/dark':'https://tiles.openfreemap.org/styles/liberty')}
+function applyTheme(choice){
+  const resolved=choice==='system'
+    ?(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')
+    :choice;
+  document.documentElement.dataset.theme=resolved;
+  try{localStorage.setItem('rcTheme',choice)}catch(e){}
+  document.querySelectorAll('[data-theme]').forEach(
+    b=>b.classList.toggle('active',b.dataset.theme===choice)
+  );
+  if(map){
+    mapReady=false;
+    map.setStyle(
+      resolved==='dark'
+        ?'https://tiles.openfreemap.org/styles/dark'
+        :'https://tiles.openfreemap.org/styles/liberty'
+    );
+  }
+}
 function mapStyle(){return document.documentElement.dataset.theme==='light'?'https://tiles.openfreemap.org/styles/liberty':'https://tiles.openfreemap.org/styles/dark'}
 
 function initMap(){
   applyTheme(themeChoice());
-  map=new maplibregl.Map({container:'map',style:mapStyle(),center:fallback,zoom:4,pitch:0,bearing:0,attributionControl:false,maxPitch:70});
+  map=new maplibregl.Map({
+    container:'map',
+    style:mapStyle(),
+    center:fallback,
+    zoom:4,
+    pitch:0,
+    bearing:0,
+    attributionControl:false,
+    maxPitch:70,
+    failIfMajorPerformanceCaveat:false
+  });
+
+  map.on('load',()=>{
+    mapReady=true;
+    map.resize();
+    locate();
+    if(pendingRouteDraw){
+      const pending=pendingRouteDraw;
+      pendingRouteDraw=null;
+      drawRoute(pending.coords,pending.end);
+    }
+  });
+
+  map.on('style.load',()=>{
+    mapReady=true;
+    map.resize();
+    if(routeReady&&routeCoords.length){
+      ensureRouteLayer(routeCoords);
+    }
+    if(pendingRouteDraw){
+      const pending=pendingRouteDraw;
+      pendingRouteDraw=null;
+      drawRoute(pending.coords,pending.end);
+    }
+  });
+
+  map.on('error',e=>console.error('MapLibre error:',e?.error||e));
   map.on('dragstart',()=>{if(driving){followMode=false;$('resume').classList.add('visible')}});
   map.on('rotatestart',()=>{if(driving){followMode=false;$('resume').classList.add('visible')}});
-  locate();
 }
 function locate(){
   if(!navigator.geolocation){$('status').textContent='LOCATION UNAVAILABLE';return}
@@ -179,19 +232,61 @@ async function routeBetween(a,b){
   const x=d.routes[0],leg=x.legs[0];
   return{coords:x.geometry.coordinates,miles:x.distance/1609.344,hours:x.duration/3600,steps:leg.steps||[]};
 }
+function ensureRouteLayer(coords){
+  if(!map||!map.isStyleLoaded())return false;
+  const data={type:'Feature',properties:{},geometry:{type:'LineString',coordinates:coords}};
+  const source=map.getSource('route');
+  if(source){
+    source.setData(data);
+  }else{
+    map.addSource('route',{type:'geojson',data});
+    map.addLayer({
+      id:'route-case',
+      type:'line',
+      source:'route',
+      layout:{'line-cap':'round','line-join':'round'},
+      paint:{'line-color':'#06101d','line-width':13,'line-opacity':.9}
+    });
+    map.addLayer({
+      id:'route-line',
+      type:'line',
+      source:'route',
+      layout:{'line-cap':'round','line-join':'round'},
+      paint:{'line-color':'#2f82ff','line-width':7}
+    });
+  }
+  return true;
+}
 function drawRoute(coords,end){
   routeCoords=coords;
-  const data={type:'Feature',geometry:{type:'LineString',coordinates:coords}};
-  if(map.getSource('route'))map.getSource('route').setData(data);
-  else{
-    map.addSource('route',{type:'geojson',data});
-    map.addLayer({id:'route-case',type:'line',source:'route',paint:{'line-color':'#06101d','line-width':13,'line-opacity':.9}});
-    map.addLayer({id:'route-line',type:'line',source:'route',paint:{'line-color':'#2f82ff','line-width':7}});
+  if(!map||!mapReady||!map.isStyleLoaded()){
+    pendingRouteDraw={coords,end};
+    map?.once('style.load',()=>{
+      mapReady=true;
+      if(pendingRouteDraw){
+        const pending=pendingRouteDraw;
+        pendingRouteDraw=null;
+        drawRoute(pending.coords,pending.end);
+      }
+    });
+    return;
   }
+
+  ensureRouteLayer(coords);
+
   if(destinationMarker)destinationMarker.remove();
   destinationMarker=new maplibregl.Marker().setLngLat(end).addTo(map);
-  const bounds=coords.reduce((b,c)=>b.extend(c),new maplibregl.LngLatBounds(coords[0],coords[0]));
-  map.fitBounds(bounds,{padding:{top:160,bottom:190,left:90,right:90},duration:800,pitch:0,bearing:0});
+
+  const bounds=coords.reduce(
+    (b,c)=>b.extend(c),
+    new maplibregl.LngLatBounds(coords[0],coords[0])
+  );
+  map.fitBounds(bounds,{
+    padding:{top:160,bottom:190,left:90,right:90},
+    duration:800,
+    pitch:0,
+    bearing:0
+  });
 }
 function dist(a,b){
   const R=6371000,p1=a[1]*Math.PI/180,p2=b[1]*Math.PI/180,dp=(b[1]-a[1])*Math.PI/180,dl=(b[0]-a[0])*Math.PI/180;
@@ -296,7 +391,15 @@ function stop(){
 function setSheet(s){sheetState=Math.max(0,Math.min(2,s));$('sheet').classList.remove('mid','full');if(sheetState===1)$('sheet').classList.add('mid');if(sheetState===2)$('sheet').classList.add('full')}
 let drag=false,sy=0,cy=0;$('handleArea').addEventListener('pointerdown',e=>{drag=true;sy=cy=e.clientY;$('handleArea').setPointerCapture(e.pointerId)});$('handleArea').addEventListener('pointermove',e=>{if(drag)cy=e.clientY});$('handleArea').addEventListener('pointerup',()=>{if(!drag)return;drag=false;const d=cy-sy;if(d<-35)setSheet(sheetState+1);else if(d>35)setSheet(sheetState-1);else setSheet(sheetState===0?1:0)});
 $('planPrimary').onclick=()=>$('planner').classList.add('open');$('closePlanner').onclick=()=>$('planner').classList.remove('open');
-$('calculate').onclick=async()=>{if(!currentPosition){$('plannerMessage').textContent='Waiting for GPS location.';return}const q=$('destination').value.trim();if(!q)return;const b=$('calculate');b.disabled=true;b.textContent='CALCULATING…';try{const end=await geocode(q),r=await routeBetween(currentPosition,end);routeSteps=r.steps;trip={drive:+$('driveHours').value,duty:+$('dutyHours').value,cycle:+$('cycleHours').value,buffer:+$('buffer').value,distance:r.miles,duration:r.hours,originalDistance:r.miles,originalDuration:r.hours};drawRoute(r.coords,end);routeReady=true;$('sheet').classList.add('hasRoute');$('destinationName').textContent=q;updateMetrics();updateClocks();shutdown();$('planner').classList.remove('open')}catch(e){$('plannerMessage').textContent=e.message}finally{b.disabled=false;b.textContent='CALCULATE ROUTE'}};
+$('calculate').onclick=async()=>{
+  if(!mapReady||!map.isStyleLoaded()){
+    $('plannerMessage').textContent='Map is still loading. One moment…';
+    await new Promise(resolve=>{
+      if(map.isStyleLoaded())return resolve();
+      map.once('style.load',resolve);
+    });
+  }
+  if(!currentPosition){$('plannerMessage').textContent='Waiting for GPS location.';locate();return}const q=$('destination').value.trim();if(!q)return;const b=$('calculate');b.disabled=true;b.textContent='CALCULATING…';try{const end=await geocode(q),r=await routeBetween(currentPosition,end);routeSteps=r.steps;trip={drive:+$('driveHours').value,duty:+$('dutyHours').value,cycle:+$('cycleHours').value,buffer:+$('buffer').value,distance:r.miles,duration:r.hours,originalDistance:r.miles,originalDuration:r.hours};drawRoute(r.coords,end);routeReady=true;$('sheet').classList.add('hasRoute');$('destinationName').textContent=q;updateMetrics();updateClocks();shutdown();$('planner').classList.remove('open')}catch(e){$('plannerMessage').textContent=e.message}finally{b.disabled=false;b.textContent='CALCULATE ROUTE'}};
 $('startRoute').onclick=start;$('endRoute').onclick=stop;$('pauseDrive').onclick=()=>{drivePaused=!drivePaused;$('pauseDrive').textContent=drivePaused?'RESUME DRIVE CLOCK':'PAUSE DRIVE CLOCK'};
 $('resume').onclick=()=>{followMode=true;$('resume').classList.remove('visible')};$('recenter').onclick=()=>{followMode=true;$('resume').classList.remove('visible');if(currentPosition)map.easeTo({center:currentPosition,zoom:driving?17:14,pitch:driving?62:0,bearing:driving?currentHeading:0,duration:500})};
 $('zoomIn').onclick=()=>map.zoomIn();$('zoomOut').onclick=()=>map.zoomOut();$('clockToggle').onclick=()=>{$('clockStack').classList.toggle('collapsed');$('clockToggle').textContent=$('clockStack').classList.contains('collapsed')?'›':'‹'};
