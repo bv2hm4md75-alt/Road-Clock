@@ -1,22 +1,19 @@
-# Road Clock Alpha 7.1
+# Road Clock Alpha 8
 
-## Changes
+## Added
 
-- True 100dvh full-screen layout with iPhone safe-area handling
-- Smoother GPU-accelerated bottom sheet
-- Collapsed navigation sheet shows only ETA, Distance, and Drive Time
-- Suggested shutdown appears only when the sheet is expanded
-- Plan/Clear controls disappear after navigation begins
-- End Route appears only in the expanded driving sheet
-- Manual Pause Drive Clock / Resume Drive Clock control
-- Pausing affects Drive only; Duty and Cycle continue
-- Delta-based clock countdown prevents time jumps after stopping
-- Live compact trip metrics stay synchronized
+- Cleaner Plan Route opening screen
+- Light, Dark, and System appearance modes
+- Map and interface both change with the theme
+- AI Co-Driver panel
+- Quick questions for legal arrival, shutdown, clocks, and ETA
+- AI answers use the live route and HOS values shown in the app
+- Existing live clocks, pause control, route tracking, trip sheet, and stop search remain included
+
+## AI limitation
+
+The Alpha 8 AI Co-Driver is an on-device rules-based prototype. It responds from Road Clock's current trip state without sending data to an external AI service. A production conversational AI will require a secure backend and model API.
 
 ## Upload
 
-Replace the five existing repository files with the individual files inside this ZIP.
-
-
-## Fix
-- Repairs a JavaScript syntax error that prevented the map, GPS, and buttons from initializing.
+Replace the five repository files with the five individual files inside this ZIP.
