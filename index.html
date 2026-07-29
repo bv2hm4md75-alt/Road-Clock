@@ -3,338 +3,137 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#06100a">
+<meta name="theme-color" content="#07110b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="./manifest.json">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<title>Road Clock Alpha 4</title>
+<title>Road Clock Alpha 5</title>
 <style>
 :root{
-  --green:#55f17b;--green2:#18a34c;--bg:#06100a;--panel:rgba(4,10,6,.97);
-  --muted:#9ba9a0;--line:#26382b;--blue:#2f80ff;--red:#ff6d7a;
-  --sheet-collapsed:154px;--sheet-mid:360px;--sheet-full:74vh;
+  --green:#5af27f;--green2:#178844;--bg:#07110b;--panel:rgba(5,12,7,.97);
+  --muted:#9dac9f;--line:#26372c;--blue:#2f82ff;--red:#ff6f7d;--amber:#ffc95b;
+  --sheet-c:150px;--sheet-m:370px;--sheet-f:74vh;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:white;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:#fff;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 button,input{font:inherit}button{cursor:pointer}
-#app{position:fixed;inset:0;overflow:hidden;background:#0a120d}
-#map{position:absolute;inset:0;z-index:1;background:#0a120d}
-.leaflet-container{background:#0a120d}
-.leaflet-tile{filter:brightness(.62) saturate(.82) hue-rotate(54deg)}
-.leaflet-control-attribution{font-size:7px!important;opacity:.42}
-.topFade{position:absolute;z-index:400;left:0;right:0;top:0;height:170px;pointer-events:none;background:linear-gradient(180deg,rgba(2,7,4,.86),rgba(2,7,4,.2) 66%,transparent)}
-.turnCard{position:absolute;z-index:900;left:14px;right:14px;top:calc(10px + env(safe-area-inset-top));min-height:92px;border-radius:24px;background:linear-gradient(135deg,#22cd5a,#0c7132);border:1px solid #7aff9c;display:none;align-items:center;gap:14px;padding:14px 16px;box-shadow:0 10px 28px rgba(0,0,0,.35)}
-.turnCard.visible{display:flex}
-.turnArrow{font-size:40px}.turnText{flex:1;min-width:0}.turnText strong{display:block;font-size:25px}.turnText span{display:block;margin-top:6px;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.shield{min-width:58px;height:58px;border:3px solid white;border-radius:15px;display:grid;place-items:center;font-size:27px;font-weight:900}
-.brand{position:absolute;z-index:850;top:calc(14px + env(safe-area-inset-top));left:14px;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:15px;background:rgba(3,8,5,.88);border:1px solid rgba(85,241,123,.35);backdrop-filter:blur(10px)}
-.brand.hidden{display:none}.logo{width:31px;height:31px;border:2px solid var(--green);border-radius:10px;display:grid;place-items:center;color:var(--green);font-weight:900;font-size:12px}.brand b{font-size:12px}.brand b span{color:var(--green)}
-.rightStack{position:absolute;z-index:900;right:14px;top:calc(14px + env(safe-area-inset-top));display:flex;flex-direction:column;align-items:center;gap:10px}
-.rightStack.routeActive{top:calc(116px + env(safe-area-inset-top))}
-.speedLimit{width:64px;background:#fff;color:#111;border:3px solid #111;border-radius:11px;text-align:center;padding:5px 2px;font-size:10px;font-weight:900;box-shadow:0 6px 18px rgba(0,0,0,.32)}
-.speedLimit strong{display:block;font-size:29px;line-height:1.05}
-.speedNow{width:64px;background:rgba(4,9,6,.94);border:1px solid #284331;border-radius:14px;text-align:center;padding:9px 3px;color:var(--green);box-shadow:0 6px 18px rgba(0,0,0,.32)}
-.speedNow strong{display:block;font-size:26px}.speedNow span{font-size:9px;font-weight:900}
+#app{position:fixed;inset:0;overflow:hidden;background:#09120d}
+#map{position:absolute;inset:0;z-index:1;background:#09120d}
+.leaflet-container{background:#09120d}
+.leaflet-control-attribution{font-size:7px!important;opacity:.45}
+.topFade{position:absolute;z-index:400;left:0;right:0;top:0;height:190px;pointer-events:none;background:linear-gradient(180deg,rgba(2,7,4,.88),rgba(2,7,4,.15) 70%,transparent)}
+.turn{position:absolute;z-index:900;left:14px;right:14px;top:calc(10px + env(safe-area-inset-top));min-height:94px;border-radius:24px;background:linear-gradient(135deg,#24ce5c,#0c7233);border:1px solid #7aff9d;display:none;align-items:center;gap:14px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.36)}
+.turn.visible{display:flex}.turnArrow{font-size:42px;line-height:1}.turnText{min-width:0;flex:1}.turnText strong{display:block;font-size:25px}.turnText span{display:block;margin-top:6px;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.shield{min-width:58px;height:58px;border:3px solid #fff;border-radius:15px;display:grid;place-items:center;font-size:27px;font-weight:900}
+.brand{position:absolute;z-index:850;left:14px;top:calc(14px + env(safe-area-inset-top));display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:15px;background:rgba(3,8,5,.88);border:1px solid rgba(90,242,127,.35);backdrop-filter:blur(10px)}
+.brand.hidden{display:none}.logo{width:31px;height:31px;border:2px solid var(--green);border-radius:10px;display:grid;place-items:center;color:var(--green);font-weight:900;font-size:12px}.brand b{font-size:12px}.brand span{color:var(--green)}
+.right{position:absolute;z-index:900;right:14px;top:calc(14px + env(safe-area-inset-top));display:flex;flex-direction:column;align-items:center;gap:10px}.right.routeActive{top:calc(118px + env(safe-area-inset-top))}
+.limit{width:64px;background:#fff;color:#111;border:3px solid #111;border-radius:11px;text-align:center;padding:5px 2px;font-size:10px;font-weight:900}.limit strong{display:block;font-size:29px}
+.speed{width:64px;background:rgba(4,9,6,.94);border:1px solid #284331;border-radius:14px;text-align:center;padding:9px 3px;color:var(--green)}.speed strong{display:block;font-size:26px}.speed span{font-size:9px;font-weight:900}
 .round{width:47px;height:47px;border-radius:50%;border:1px solid #2d4032;background:rgba(3,8,5,.92);color:#fff;font-size:19px;display:grid;place-items:center;box-shadow:0 6px 16px rgba(0,0,0,.28)}
-.statusChip{position:absolute;z-index:850;left:14px;bottom:calc(var(--sheet-collapsed) + 14px);padding:9px 11px;border-radius:13px;background:rgba(3,9,5,.92);border:1px solid #2a5536;color:var(--green);font-size:10px;font-weight:900;backdrop-filter:blur(8px);transition:bottom .25s}
-.statusChip.stop{color:var(--red);border-color:#66313a}.statusChip.neutral{color:#d7e2da;border-color:#465047}
-.gpsToast{position:absolute;z-index:920;left:50%;transform:translateX(-50%);top:calc(116px + env(safe-area-inset-top));max-width:80%;display:none;padding:8px 11px;border-radius:12px;background:rgba(4,10,6,.94);border:1px solid #304536;color:#e3ece5;font-size:11px;text-align:center}
-.driverIcon{width:38px;height:38px;display:grid;place-items:center;transform-origin:center}
-.sheet{position:absolute;z-index:1000;left:0;right:0;bottom:0;height:var(--sheet-mid);border-radius:26px 26px 0 0;background:var(--panel);border-top:1px solid var(--line);backdrop-filter:blur(18px);box-shadow:0 -12px 32px rgba(0,0,0,.4);transform:translateY(calc(var(--sheet-mid) - var(--sheet-collapsed)));transition:transform .25s ease;touch-action:none;overflow:hidden;padding-bottom:env(safe-area-inset-bottom)}
-.sheet.mid{transform:translateY(0)}.sheet.full{height:var(--sheet-full);transform:translateY(0)}
-.handleArea{height:30px;display:grid;place-items:center}.handle{width:48px;height:5px;border-radius:99px;background:#657169}
-.sheetContent{height:calc(100% - 30px);overflow:auto;padding:0 16px 18px}
-.collapsedRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center}
-.routeSummary small{display:block;color:var(--muted);font-size:9px;text-transform:uppercase}.routeSummary b{display:block;margin-top:4px;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.routeSummary span{display:block;margin-top:4px;color:#c7d1ca;font-size:11px}
-.startBtn{min-width:136px;border:1px solid #6cff94;border-radius:15px;padding:13px 15px;background:linear-gradient(135deg,#2dcc64,#15823f);color:white;font-weight:900;box-shadow:0 7px 20px rgba(0,0,0,.32)}
-.startBtn:disabled{opacity:.45;filter:grayscale(.4);cursor:not-allowed}.startBtn.running{background:#101914;border-color:#4b5b50}
-.expanded{margin-top:16px;border-top:1px solid #253027;padding-top:14px}
-.actions{display:flex;gap:9px;margin-bottom:14px}.secondary{flex:1;border:1px solid #2b4933;background:#0d1911;color:var(--green);border-radius:12px;padding:10px;font-weight:800}.secondary.light{color:#fff;border-color:#3a463e}
+.resume{display:none;width:auto;padding:0 13px;border-radius:24px;font-size:11px;font-weight:900;color:var(--green)}.resume.visible{display:block}
+.clockRail{position:absolute;z-index:880;left:14px;top:calc(132px + env(safe-area-inset-top));display:flex;flex-direction:column;gap:10px;align-items:center}
+.clockRail.routeActive{top:calc(120px + env(safe-area-inset-top))}
+.clockToggle{width:42px;height:42px;border-radius:50%;border:1px solid #2b4733;background:rgba(3,9,5,.93);color:var(--green);font-size:18px}
+.clockStack{display:flex;flex-direction:column;gap:10px;transition:.22s}.clockStack.collapsed{display:none}
+.clockCircle{width:74px;height:74px;border-radius:50%;display:grid;place-items:center;text-align:center;background:rgba(3,9,5,.94);border:2px solid #2d4a35;box-shadow:0 7px 18px rgba(0,0,0,.34)}
+.clockCircle.drive{border-color:#3b8d4f}.clockCircle.duty{border-color:#8e7434}.clockCircle.cycle{border-color:#3f6d9e}
+.clockCircle small{display:block;font-size:8px;font-weight:900}.clockCircle b{display:block;font-size:15px;margin-top:2px}.clockCircle.drive small{color:var(--green)}.clockCircle.duty small{color:var(--amber)}.clockCircle.cycle small{color:#75b0ff}
+.status{position:absolute;z-index:850;left:14px;bottom:calc(var(--sheet-c) + 14px);padding:9px 11px;border-radius:13px;background:rgba(3,9,5,.92);border:1px solid #2a5536;color:var(--green);font-size:10px;font-weight:900;transition:bottom .25s}.status.stop{color:var(--red);border-color:#66313a}.status.neutral{color:#d7e2da;border-color:#465047}
+.toast{position:absolute;z-index:920;left:50%;transform:translateX(-50%);top:calc(116px + env(safe-area-inset-top));max-width:82%;display:none;padding:8px 11px;border-radius:12px;background:rgba(4,10,6,.94);border:1px solid #304536;color:#e3ece5;font-size:11px;text-align:center}
+.sheet{position:absolute;z-index:1000;left:0;right:0;bottom:0;height:var(--sheet-m);border-radius:26px 26px 0 0;background:var(--panel);border-top:1px solid var(--line);backdrop-filter:blur(18px);box-shadow:0 -12px 34px rgba(0,0,0,.42);transform:translateY(calc(var(--sheet-m) - var(--sheet-c)));transition:transform .25s;touch-action:none;overflow:hidden;padding-bottom:env(safe-area-inset-bottom)}
+.sheet.mid{transform:translateY(0)}.sheet.full{height:var(--sheet-f);transform:translateY(0)}
+.handleArea{height:30px;display:grid;place-items:center}.handle{width:48px;height:5px;border-radius:99px;background:#66736a}.sheetContent{height:calc(100% - 30px);overflow:auto;padding:0 16px 18px}
+.collapsedRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center}.routeSummary small{display:block;color:var(--muted);font-size:9px;text-transform:uppercase}.routeSummary b{display:block;margin-top:4px;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.routeSummary span{display:block;margin-top:4px;color:#c7d1ca;font-size:11px}
+.start{min-width:132px;border:1px solid #6cff94;border-radius:15px;padding:13px 15px;background:linear-gradient(135deg,#2dcc64,#15823f);color:#fff;font-weight:900}.start:disabled{opacity:.45}.start.running{background:#101914;border-color:#4b5b50}
+.expanded{margin-top:16px;border-top:1px solid #253027;padding-top:14px}.actions{display:flex;gap:9px;margin-bottom:14px}.secondary{flex:1;border:1px solid #2b4933;background:#0d1911;color:var(--green);border-radius:12px;padding:10px;font-weight:800}.secondary.light{color:#fff;border-color:#3a463e}
 .metrics{display:grid;grid-template-columns:repeat(4,1fr)}.metric{padding:0 9px;border-left:1px solid #263128}.metric:first-child{border-left:0;padding-left:0}.metric small,.stopBox small{font-size:9px;color:var(--muted);text-transform:uppercase}.metric b{display:block;margin-top:5px;font-size:15px}
-.stopBox{margin-top:16px;padding:13px;border:1px solid #283b2d;border-radius:15px;background:#0a130d}.stopBox b{display:block;margin-top:5px}.stopBox span{font-size:11px;color:var(--muted)}
-.hos{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:14px}.hos div{border:1px solid #28392d;border-radius:14px;padding:11px;background:#08100b}.hos small{font-size:9px}.hos b{font-size:18px;display:block;margin-top:5px}
+.stopBox{margin-top:16px;padding:13px;border:1px solid #2b4733;border-radius:15px;background:#09130d}.stopBox b{display:block;margin-top:5px}.stopBox span{display:block;margin-top:4px;font-size:11px;color:var(--muted)}
 .note{margin-top:14px;border-left:3px solid var(--green);padding:10px 12px;background:#09120c;font-size:11px;color:#c8d3cb;line-height:1.45}
-.planner{position:absolute;z-index:1400;inset:0;display:none;overflow:auto;background:#030704;padding:calc(18px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))}
-.planner.open{display:block}.plannerHead{display:flex;justify-content:space-between;align-items:center}.plannerHead h2{margin:0}.closeBtn{width:42px;height:42px;border-radius:50%;border:1px solid #304036;background:#0b140e;color:#fff}
-.card{margin-top:18px;border:1px solid #25352a;border-radius:18px;padding:15px;background:#0a110c}label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{width:100%;border:1px solid #2a3b2e;border-radius:12px;background:#061009;color:#fff;padding:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.primary{width:100%;margin-top:16px;border:0;border-radius:14px;padding:14px;background:var(--green);color:#041007;font-weight:900}.helper{font-size:11px;color:#aab6ae;line-height:1.45}
-.followShade{position:absolute;z-index:410;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(1,4,2,.08),transparent 50%,rgba(1,4,2,.28));display:none}.followShade.visible{display:block}
-@media(max-width:390px){.turnText strong{font-size:22px}.turnText span{font-size:13px}.metrics{grid-template-columns:repeat(2,1fr);row-gap:13px}.metric:nth-child(3){border-left:0;padding-left:0}.startBtn{min-width:124px;padding:12px}.sheet{height:380px;transform:translateY(calc(380px - var(--sheet-collapsed)))}}
+.planner{position:absolute;z-index:1400;inset:0;display:none;overflow:auto;background:#030704;padding:calc(18px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))}.planner.open{display:block}.plannerHead{display:flex;justify-content:space-between;align-items:center}.plannerHead h2{margin:0}.close{width:42px;height:42px;border-radius:50%;border:1px solid #304036;background:#0b140e;color:#fff}.card{margin-top:18px;border:1px solid #25352a;border-radius:18px;padding:15px;background:#0a110c}
+label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{width:100%;border:1px solid #2a3b2e;border-radius:12px;background:#061009;color:#fff;padding:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.primary{width:100%;margin-top:16px;border:0;border-radius:14px;padding:14px;background:var(--green);color:#041007;font-weight:900}.helper{font-size:11px;color:#aab6ae;line-height:1.45}
+.driverIcon{width:38px;height:38px;display:grid;place-items:center;transform-origin:center}
+@media(max-width:390px){.turnText strong{font-size:22px}.turnText span{font-size:13px}.clockCircle{width:68px;height:68px}.metrics{grid-template-columns:repeat(2,1fr);row-gap:13px}.metric:nth-child(3){border-left:0;padding-left:0}.sheet{height:390px;transform:translateY(calc(390px - var(--sheet-c)))}}
 </style>
 </head>
 <body>
 <div id="app">
-  <div id="map"></div>
-  <div class="topFade"></div>
-  <div id="followShade" class="followShade"></div>
-
-  <div id="brand" class="brand"><div class="logo">RC</div><b>ROAD <span>CLOCK</span></b></div>
-
-  <div id="turnCard" class="turnCard">
-    <div class="turnArrow">↑</div>
-    <div class="turnText"><strong id="turnDistance">Continue</strong><span id="turnInstruction">Follow the highlighted route</span></div>
-    <div id="turnShield" class="shield">--</div>
-  </div>
-
-  <div id="rightStack" class="rightStack">
-    <div class="speedLimit">SPEED LIMIT<strong id="speedLimit">--</strong></div>
-    <div class="speedNow"><strong id="speedNow">0</strong><span>MPH</span></div>
-    <button id="recenter" class="round" aria-label="Recenter">⌖</button>
-    <button id="zoomIn" class="round" aria-label="Zoom in">+</button>
-    <button id="zoomOut" class="round" aria-label="Zoom out">−</button>
-  </div>
-
-  <div id="statusChip" class="statusChip neutral">LOCATING YOU…</div>
-  <div id="gpsToast" class="gpsToast" role="status"></div>
-
-  <section id="sheet" class="sheet" aria-label="Trip controls">
-    <div id="handleArea" class="handleArea"><div class="handle"></div></div>
-    <div class="sheetContent">
-      <div class="collapsedRow">
-        <div class="routeSummary">
-          <small id="summaryLabel">Current location</small>
-          <b id="summaryTitle">Finding your position…</b>
-          <span id="summarySub">Plan a route when you're ready</span>
-        </div>
-        <button id="startRoute" class="startBtn" disabled>START ROUTE</button>
-      </div>
-
-      <div class="expanded">
-        <div class="actions">
-          <button id="planRoute" class="secondary">Plan Route</button>
-          <button id="clearRoute" class="secondary light">Clear Route</button>
-        </div>
-
-        <div class="metrics">
-          <div class="metric"><small>ETA</small><b id="eta">--</b></div>
-          <div class="metric"><small>Distance</small><b id="distance">--</b></div>
-          <div class="metric"><small>Drive time</small><b id="driveTime">--</b></div>
-          <div class="metric"><small>Range</small><b id="rangeMiles">349 mi</b></div>
-        </div>
-
-        <div class="stopBox">
-          <small>Suggested stop</small>
-          <b id="stopName">Plan a route to see stop suggestions</b>
-          <span id="stopDetail">No route selected</span>
-        </div>
-
-        <div class="hos">
-          <div><small style="color:var(--green)">DRIVE</small><b id="driveClock">6h 42m</b></div>
-          <div><small style="color:#ffc857">DUTY</small><b id="dutyClock">9h 15m</b></div>
-          <div><small style="color:#65aaff">CYCLE</small><b id="cycleClock">42h 37m</b></div>
-        </div>
-
-        <div class="note">Alpha 4 uses your current location when the app opens. Live navigation requires location permission and works best with the app open on screen.</div>
-      </div>
-    </div>
-  </section>
-
-  <section id="planner" class="planner">
-    <div class="plannerHead"><h2>Plan Route</h2><button id="closePlanner" class="closeBtn">✕</button></div>
-    <div class="card">
-      <label for="origin">Origin</label>
-      <input id="origin" value="Current location" readonly>
-      <label for="destination">Destination</label>
-      <input id="destination" placeholder="City, venue, address or ZIP code">
-      <div class="grid">
-        <div><label for="driveHours">Drive remaining</label><input id="driveHours" type="number" step=".25" value="6.7"></div>
-        <div><label for="dutyHours">Duty remaining</label><input id="dutyHours" type="number" step=".25" value="9.25"></div>
-        <div><label for="cycleHours">Cycle remaining</label><input id="cycleHours" type="number" step=".25" value="42.6"></div>
-        <div><label for="planningSpeed">Planning speed</label><input id="planningSpeed" type="number" value="55"></div>
-        <div><label for="buffer">Safety buffer</label><input id="buffer" type="number" step=".25" value=".35"></div>
-        <div><label for="delay">Known delay (min)</label><input id="delay" type="number" value="0"></div>
-      </div>
-      <button id="calculate" class="primary">Calculate Route</button>
-      <p id="plannerMessage" class="helper">Road Clock will route from your current GPS position.</p>
-    </div>
-  </section>
+<div id="map"></div><div class="topFade"></div>
+<div id="brand" class="brand"><div class="logo">RC</div><b>ROAD <span>CLOCK</span></b></div>
+<div id="turn" class="turn"><div id="turnArrow" class="turnArrow">↑</div><div class="turnText"><strong id="turnDistance">Continue</strong><span id="turnInstruction">Follow the highlighted route</span></div><div id="turnShield" class="shield">--</div></div>
+<div id="right" class="right"><div class="limit">SPEED LIMIT<strong id="speedLimit">--</strong></div><div class="speed"><strong id="speedNow">0</strong><span>MPH</span></div><button id="recenter" class="round">⌖</button><button id="resume" class="round resume">RESUME</button><button id="zoomIn" class="round">+</button><button id="zoomOut" class="round">−</button></div>
+<div id="clockRail" class="clockRail"><button id="clockToggle" class="clockToggle">‹</button><div id="clockStack" class="clockStack"><div class="clockCircle drive"><div><small>DRIVE</small><b id="driveCircle">6:42</b></div></div><div class="clockCircle duty"><div><small>DUTY</small><b id="dutyCircle">9:15</b></div></div><div class="clockCircle cycle"><div><small>CYCLE</small><b id="cycleCircle">42:37</b></div></div></div></div>
+<div id="status" class="status neutral">LOCATING YOU…</div><div id="toast" class="toast"></div>
+<section id="sheet" class="sheet"><div id="handleArea" class="handleArea"><div class="handle"></div></div><div class="sheetContent">
+<div class="collapsedRow"><div class="routeSummary"><small id="summaryLabel">Current location</small><b id="summaryTitle">Finding your position…</b><span id="summarySub">Plan a route when ready</span></div><button id="start" class="start" disabled>START ROUTE</button></div>
+<div class="expanded"><div class="actions"><button id="plan" class="secondary">Plan Route</button><button id="clear" class="secondary light">Clear Route</button></div>
+<div class="metrics"><div class="metric"><small>ETA</small><b id="eta">--</b></div><div class="metric"><small>Distance</small><b id="distance">--</b></div><div class="metric"><small>Drive time</small><b id="driveTime">--</b></div><div class="metric"><small>Range</small><b id="rangeMiles">349 mi</b></div></div>
+<div class="stopBox"><small>Recommended shutdown</small><b id="stopName">Plan a route to calculate</b><span id="stopDetail">Road Clock will aim near the end of your usable drive clock with a safety reserve.</span></div>
+<div class="note">Alpha 5 improves live clocks, route progress, map exploration, turn updates and shutdown planning. It remains a prototype, not an ELD or commercial routing system.</div>
+</div></div></section>
+<section id="planner" class="planner"><div class="plannerHead"><h2>Plan Route</h2><button id="closePlanner" class="close">✕</button></div><div class="card">
+<label>Origin</label><input value="Current location" readonly><label>Destination</label><input id="destination" placeholder="City, venue, address or ZIP code">
+<div class="grid"><div><label>Drive remaining</label><input id="driveHours" type="number" step=".25" value="6.7"></div><div><label>Duty remaining</label><input id="dutyHours" type="number" step=".25" value="9.25"></div><div><label>Cycle remaining</label><input id="cycleHours" type="number" step=".25" value="42.6"></div><div><label>Planning speed</label><input id="planningSpeed" type="number" value="55"></div><div><label>Safety reserve</label><input id="buffer" type="number" step=".25" value=".5"></div><div><label>Known delay (min)</label><input id="delay" type="number" value="0"></div></div>
+<button id="calculate" class="primary">Calculate Route</button><p id="plannerMessage" class="helper">Route starts from your live GPS position.</p></div></section>
 </div>
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-let map,routeUnder,routeLine,rangeCircle,destinationMarker,driverMarker;
+let map,routeUnder,routeLine,rangeCircle,destinationMarker,shutdownMarker,driverMarker;
 let currentPosition=null,currentHeading=0,currentSpeed=0,watchId=null,wakeLock=null;
-let routeCoords=[],routeReady=false,driving=false,sheetState=0,dragging=false,dragStart=0,dragNow=0;
-let trip={drive:6.7,duty:9.25,cycle:42.6,speed:55,buffer:.35,delay:0,distance:0,duration:0};
+let routeCoords=[],steps=[],routeReady=false,driving=false,followMode=true,sheetState=0;
+let dragging=false,dragStart=0,dragNow=0,lastFix=null,lastFixTime=null,timerId=null,startStamp=null;
+let trip={drive:6.7,duty:9.25,cycle:42.6,speed:55,buffer:.5,delay:0,distance:0,duration:0};
+let initial={drive:6.7,duty:9.25,cycle:42.6};
 const fallback=[39.8283,-98.5795];
 
+function fmtClock(h){const t=Math.max(0,Math.round(h*60));return `${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`}
 function fmtHours(h){const t=Math.max(0,Math.round(h*60));return `${Math.floor(t/60)}h ${String(t%60).padStart(2,'0')}m`}
 function usableHours(){return Math.max(0,Math.min(trip.drive,trip.duty,trip.cycle)-trip.buffer-trip.delay/60)}
 function legalMiles(){return usableHours()*trip.speed}
-function toast(text,persistent=false){const el=$('gpsToast');el.textContent=text;el.style.display='block';if(!persistent)setTimeout(()=>el.style.display='none',2600)}
-function setStatus(text,mode='neutral'){const el=$('statusChip');el.textContent=text;el.className='statusChip '+mode}
+function toast(t,p=false){const e=$('toast');e.textContent=t;e.style.display='block';if(!p)setTimeout(()=>e.style.display='none',2500)}
+function status(t,c='neutral'){$('status').textContent=t;$('status').className='status '+c}
 
 function initMap(){
-  map=L.map('map',{zoomControl:false,attributionControl:true,preferCanvas:true,fadeAnimation:true,zoomAnimation:true,markerZoomAnimation:true}).setView(fallback,4);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,updateWhenIdle:true,keepBuffer:3,attribution:'© OpenStreetMap'}).addTo(map);
-  locateOnOpen();
+  map=L.map('map',{zoomControl:false,preferCanvas:true,fadeAnimation:true,zoomAnimation:true,markerZoomAnimation:true,inertia:true,inertiaDeceleration:3200}).setView(fallback,4);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:20,updateWhenIdle:true,keepBuffer:4,attribution:'© OpenStreetMap © CARTO'}).addTo(map);
+  map.on('dragstart zoomstart',()=>{if(driving){followMode=false;$('resume').classList.add('visible')}});
+  locate();
 }
+function driverIcon(h=0){return L.divIcon({className:'',iconSize:[38,38],iconAnchor:[19,19],html:`<div class="driverIcon" style="transform:rotate(${Number.isFinite(h)?h:0}deg)"><svg viewBox="0 0 48 48" width="38" height="38"><circle cx="24" cy="24" r="22" fill="rgba(47,130,255,.28)"/><path d="M24 7 L35 37 L24 31 L13 37 Z" fill="#fff" stroke="#2f82ff" stroke-width="2"/></svg></div>`})}
+function setDriver(lat,lon,h=0){currentPosition=[lat,lon];currentHeading=Number.isFinite(h)?h:0;if(!driverMarker)driverMarker=L.marker(currentPosition,{icon:driverIcon(currentHeading),zIndexOffset:1200}).addTo(map);else{driverMarker.setLatLng(currentPosition);driverMarker.setIcon(driverIcon(currentHeading))}}
+function locate(){if(!navigator.geolocation){status('LOCATION UNAVAILABLE');return}navigator.geolocation.getCurrentPosition(p=>{setDriver(p.coords.latitude,p.coords.longitude,p.coords.heading);map.setView(currentPosition,14);status('CURRENT LOCATION');$('summaryTitle').textContent='Ready from your current location';$('summarySub').textContent='Tap Plan Route to choose a destination'},()=>{status('LOCATION NEEDED');$('summaryTitle').textContent='Location permission needed';toast('Allow Precise Location for Road Clock.',true)},{enableHighAccuracy:true,timeout:12000,maximumAge:20000})}
+function clearLayers(){[routeUnder,routeLine,rangeCircle,destinationMarker,shutdownMarker].forEach(l=>{if(l&&map.hasLayer(l))map.removeLayer(l)});routeUnder=routeLine=rangeCircle=destinationMarker=shutdownMarker=null}
+function drawRoute(coords,end){clearLayers();routeCoords=coords;routeUnder=L.polyline(coords,{color:'#f4f8ff',weight:12,opacity:.9,lineCap:'round',lineJoin:'round'}).addTo(map);routeLine=L.polyline(coords,{color:'#2f82ff',weight:7,opacity:1,lineCap:'round',lineJoin:'round'}).addTo(map);destinationMarker=L.marker(end).addTo(map);if(currentPosition)rangeCircle=L.circle(currentPosition,{radius:legalMiles()*1609.344,color:'#5af27f',weight:3,fillColor:'#5af27f',fillOpacity:.07}).addTo(map);map.fitBounds(L.latLngBounds(coords),{paddingTopLeft:[65,170],paddingBottomRight:[65,200]})}
+function setSheet(s){sheetState=Math.max(0,Math.min(2,s));$('sheet').className='sheet'+(sheetState===1?' mid':sheetState===2?' full':'');const lift=sheetState===0?'calc(var(--sheet-c) + 14px)':sheetState===1?'calc(var(--sheet-m) + 14px)':'calc(var(--sheet-f) + 14px)';$('status').style.bottom=lift}
+$('handleArea').addEventListener('pointerdown',e=>{dragging=true;dragStart=e.clientY;dragNow=e.clientY;$('handleArea').setPointerCapture(e.pointerId)});$('handleArea').addEventListener('pointermove',e=>{if(dragging)dragNow=e.clientY});$('handleArea').addEventListener('pointerup',()=>{if(!dragging)return;dragging=false;const d=dragNow-dragStart;if(d<-35)setSheet(sheetState+1);else if(d>35)setSheet(sheetState-1);else setSheet(sheetState===0?1:0)});
+$('clockToggle').addEventListener('click',()=>{const s=$('clockStack');s.classList.toggle('collapsed');$('clockToggle').textContent=s.classList.contains('collapsed')?'›':'‹'});
 
-function driverIcon(heading=0){
-  return L.divIcon({className:'',iconSize:[38,38],iconAnchor:[19,19],html:`<div class="driverIcon" style="transform:rotate(${Number.isFinite(heading)?heading:0}deg)"><svg viewBox="0 0 48 48" width="38" height="38"><circle cx="24" cy="24" r="22" fill="rgba(47,128,255,.28)"/><path d="M24 7 L35 37 L24 31 L13 37 Z" fill="#fff" stroke="#2f80ff" stroke-width="2"/></svg></div>`});
-}
-
-function setDriver(lat,lon,heading=0){
-  currentPosition=[lat,lon];currentHeading=Number.isFinite(heading)?heading:0;
-  if(!driverMarker)driverMarker=L.marker(currentPosition,{icon:driverIcon(currentHeading),zIndexOffset:1200}).addTo(map);
-  else{driverMarker.setLatLng(currentPosition);driverMarker.setIcon(driverIcon(currentHeading))}
-}
-
-function locateOnOpen(){
-  if(!navigator.geolocation){
-    setStatus('LOCATION UNAVAILABLE','neutral');$('summaryTitle').textContent='Location unavailable';return;
-  }
-  navigator.geolocation.getCurrentPosition(pos=>{
-    setDriver(pos.coords.latitude,pos.coords.longitude,pos.coords.heading);
-    map.setView(currentPosition,13,{animate:false});
-    setStatus('CURRENT LOCATION','neutral');
-    $('summaryTitle').textContent='Ready from your current location';
-    $('summarySub').textContent='Tap Plan Route to choose a destination';
-  },err=>{
-    setStatus('TAP LOCATE','neutral');
-    $('summaryTitle').textContent='Location permission needed';
-    $('summarySub').textContent='Tap the target button and allow Precise Location';
-    toast('Allow Precise Location for Road Clock.',true);
-  },{enableHighAccuracy:true,timeout:12000,maximumAge:30000});
-}
-
-function clearRouteLayers(){
-  [routeUnder,routeLine,rangeCircle,destinationMarker].forEach(layer=>{if(layer&&map.hasLayer(layer))map.removeLayer(layer)});
-  routeUnder=routeLine=rangeCircle=destinationMarker=null;
-}
-
-function drawRoute(coords,end){
-  clearRouteLayers();
-  routeCoords=coords;
-  routeUnder=L.polyline(coords,{color:'#eef5ff',weight:11,opacity:.88,lineJoin:'round',lineCap:'round'}).addTo(map);
-  routeLine=L.polyline(coords,{color:'#2f80ff',weight:7,opacity:1,lineJoin:'round',lineCap:'round'}).addTo(map);
-  destinationMarker=L.marker(end).addTo(map);
-  if(currentPosition){
-    rangeCircle=L.circle(currentPosition,{radius:legalMiles()*1609.344,color:'#55f17b',weight:3,fillColor:'#55f17b',fillOpacity:.08}).addTo(map);
-  }
-  map.fitBounds(L.latLngBounds(coords),{paddingTopLeft:[50,150],paddingBottomRight:[50,190],animate:true});
-}
-
-function setSheet(state){
-  sheetState=Math.max(0,Math.min(2,state));
-  $('sheet').className='sheet'+(sheetState===1?' mid':sheetState===2?' full':'');
-  const lift=sheetState===0?'calc(var(--sheet-collapsed) + 14px)':sheetState===1?'calc(var(--sheet-mid) + 14px)':'calc(var(--sheet-full) + 14px)';
-  $('statusChip').style.bottom=lift;
-}
-
-$('handleArea').addEventListener('pointerdown',e=>{dragging=true;dragStart=e.clientY;dragNow=e.clientY;$('handleArea').setPointerCapture(e.pointerId)});
-$('handleArea').addEventListener('pointermove',e=>{if(dragging)dragNow=e.clientY});
-$('handleArea').addEventListener('pointerup',()=>{if(!dragging)return;dragging=false;const d=dragNow-dragStart;if(d<-35)setSheet(sheetState+1);else if(d>35)setSheet(sheetState-1);else setSheet(sheetState===0?1:0)});
-
-async function geocode(q){
-  const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`);
-  const d=await r.json();if(!d[0])throw new Error('Destination not found');
-  return [Number(d[0].lat),Number(d[0].lon)];
-}
-async function routeBetween(a,b){
-  const url=`https://router.project-osrm.org/route/v1/driving/${a[1]},${a[0]};${b[1]},${b[0]}?overview=full&geometries=geojson&steps=true`;
-  const r=await fetch(url);const d=await r.json();if(!d.routes?.[0])throw new Error('Route service did not return a route');
-  const x=d.routes[0],steps=x.legs?.[0]?.steps||[],first=steps.find(s=>s.name);
-  return {coords:x.geometry.coordinates.map(c=>[c[1],c[0]]),miles:x.distance/1609.344,hours:x.duration/3600,
-    instruction:first?`Continue on ${first.name}`:'Follow the highlighted route',
-    road:(first?.name.match(/\b(?:I-|US-)?(\d{1,3})\b/i)||[])[1]||'--'};
-}
-
-function updateTripUI(destinationName){
-  $('summaryLabel').textContent='Current route';
-  $('summaryTitle').textContent=destinationName;
-  $('summarySub').textContent=`${Math.round(trip.distance)} mi · ${fmtHours(trip.duration)}`;
-  $('distance').textContent=`${Math.round(trip.distance)} mi`;
-  $('driveTime').textContent=fmtHours(trip.duration);
-  $('rangeMiles').textContent=`${Math.round(legalMiles())} mi`;
-  $('driveClock').textContent=fmtHours(trip.drive);$('dutyClock').textContent=fmtHours(trip.duty);$('cycleClock').textContent=fmtHours(trip.cycle);
-  $('eta').textContent=new Date(Date.now()+(trip.duration+trip.delay/60)*3600000).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
-  const within=trip.distance<=legalMiles();setStatus(within?'● WITHIN LEGAL RANGE':'● STOP REQUIRED',within?'':'stop');
-  $('startRoute').disabled=false;
-}
-
-$('planRoute').addEventListener('click',()=>$('planner').classList.add('open'));
-$('closePlanner').addEventListener('click',()=>$('planner').classList.remove('open'));
-$('calculate').addEventListener('click',async()=>{
-  if(!currentPosition){$('plannerMessage').textContent='Current location is not available yet. Tap the target button and allow location access.';return}
-  const destinationName=$('destination').value.trim();if(!destinationName){$('plannerMessage').textContent='Enter a destination.';return}
-  const btn=$('calculate');btn.disabled=true;btn.textContent='Calculating…';$('plannerMessage').textContent='Building your route…';
-  try{
-    const end=await geocode(destinationName);
-    const route=await routeBetween(currentPosition,end);
-    trip={drive:+$('driveHours').value,duty:+$('dutyHours').value,cycle:+$('cycleHours').value,speed:+$('planningSpeed').value,buffer:+$('buffer').value,delay:+$('delay').value,distance:route.miles,duration:route.hours};
-    drawRoute(route.coords,end);routeReady=true;
-    $('turnInstruction').textContent=route.instruction;$('turnShield').textContent=route.road;
-    updateTripUI(destinationName);
-    $('planner').classList.remove('open');setSheet(0);
-  }catch(e){$('plannerMessage').textContent=e.message+'. Check your internet connection.'}
-  finally{btn.disabled=false;btn.textContent='Calculate Route'}
-});
-
-$('clearRoute').addEventListener('click',()=>{
-  stopNavigation(false);clearRouteLayers();routeCoords=[];routeReady=false;
-  $('startRoute').disabled=true;$('summaryLabel').textContent='Current location';$('summaryTitle').textContent='Ready from your current location';$('summarySub').textContent='Tap Plan Route to choose a destination';
-  $('eta').textContent=$('distance').textContent=$('driveTime').textContent='--';$('turnCard').classList.remove('visible');$('brand').classList.remove('hidden');$('rightStack').classList.remove('routeActive');setStatus('CURRENT LOCATION','neutral');
-  if(currentPosition)map.setView(currentPosition,13,{animate:true});
-});
-
-function computeSpeed(pos){
-  if(Number.isFinite(pos.coords.speed)&&pos.coords.speed>=0)return pos.coords.speed*2.236936;
-  return currentSpeed;
-}
-function nearestRouteIndex(ll){let best=0,bestD=Infinity;routeCoords.forEach((p,i)=>{const d=map.distance(ll,p);if(d<bestD){bestD=d;best=i}});return best}
-function remainingMiles(ll){if(!routeCoords.length)return trip.distance;const idx=nearestRouteIndex(ll);let m=map.distance(ll,routeCoords[idx]);for(let i=idx;i<routeCoords.length-1;i++)m+=map.distance(routeCoords[i],routeCoords[i+1]);return m/1609.344}
-function forwardPoint(lat,lon,heading,meters){const R=6378137,b=(heading||0)*Math.PI/180,la=lat*Math.PI/180,lo=lon*Math.PI/180,d=meters/R,la2=Math.asin(Math.sin(la)*Math.cos(d)+Math.cos(la)*Math.sin(d)*Math.cos(b)),lo2=lo+Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(la),Math.cos(d)-Math.sin(la)*Math.sin(la2));return[la2*180/Math.PI,lo2*180/Math.PI]}
-async function requestWakeLock(){try{if('wakeLock'in navigator)wakeLock=await navigator.wakeLock.request('screen')}catch(e){}}
-
-function onLivePosition(pos){
-  setDriver(pos.coords.latitude,pos.coords.longitude,pos.coords.heading);
-  currentSpeed=Math.max(0,computeSpeed(pos));$('speedNow').textContent=Math.round(currentSpeed);
-  if(driving){
-    const ahead=forwardPoint(currentPosition[0],currentPosition[1],currentHeading,260);
-    map.setView(ahead,17,{animate:true,duration:.35});
-    const remain=remainingMiles(currentPosition);trip.distance=remain;trip.duration=remain/Math.max(trip.speed,1);
-    $('distance').textContent=`${Math.round(remain)} mi`;$('driveTime').textContent=fmtHours(trip.duration);$('summarySub').textContent=`${Math.round(remain)} mi · ${fmtHours(trip.duration)}`;
-    $('eta').textContent=new Date(Date.now()+trip.duration*3600000).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
-    $('turnDistance').textContent=remain<1?`${Math.round(remain*5280)} ft`:`${Math.min(remain,2.5).toFixed(1)} mi`;
-    if(routeLine)routeLine.bringToFront();if(driverMarker)driverMarker.setZIndexOffset(1200);
-  }
-}
-function onLiveError(err){toast(err.code===1?'Enable Precise Location for Road Clock.':'GPS signal unavailable.',true);stopNavigation(false)}
-
-function startNavigation(){
-  if(!routeReady||!currentPosition)return;
-  driving=true;$('startRoute').textContent='END ROUTE';$('startRoute').classList.add('running');
-  $('turnCard').classList.add('visible');$('brand').classList.add('hidden');$('rightStack').classList.add('routeActive');$('followShade').classList.add('visible');
-  setSheet(0);toast('Live navigation started.');
-  watchId=navigator.geolocation.watchPosition(onLivePosition,onLiveError,{enableHighAccuracy:true,maximumAge:1000,timeout:15000});
-  requestWakeLock();
-  if(routeLine)routeLine.bringToFront();
-}
-function stopNavigation(show=true){
-  driving=false;$('startRoute').textContent='START ROUTE';$('startRoute').classList.remove('running');
-  $('turnCard').classList.remove('visible');$('brand').classList.remove('hidden');$('rightStack').classList.remove('routeActive');$('followShade').classList.remove('visible');
-  if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}
-  if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null}
-  if(show)toast('Navigation ended.');
-  if(routeReady&&routeCoords.length)map.fitBounds(L.latLngBounds(routeCoords),{paddingTopLeft:[50,150],paddingBottomRight:[50,190],animate:true});
-}
-$('startRoute').addEventListener('click',()=>driving?stopNavigation():startNavigation());
-
-$('recenter').addEventListener('click',()=>{
-  if(!navigator.geolocation)return;
-  navigator.geolocation.getCurrentPosition(pos=>{
-    setDriver(pos.coords.latitude,pos.coords.longitude,pos.coords.heading);
-    map.setView(currentPosition,driving?17:13,{animate:true});
-    setStatus(routeReady?$('statusChip').textContent:'CURRENT LOCATION',routeReady?'':'neutral');
-  },()=>toast('Location is unavailable.',true),{enableHighAccuracy:true,timeout:12000});
-});
-$('zoomIn').addEventListener('click',()=>map.zoomIn());$('zoomOut').addEventListener('click',()=>map.zoomOut());
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&driving&&!wakeLock)requestWakeLock()});
-initMap();setSheet(0);
-if('serviceWorker'in navigator&&location.protocol!=='file:'){navigator.serviceWorker.register('./service-worker.js').then(r=>r.update()).catch(()=>{})}
+async function geocode(q){const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`);const d=await r.json();if(!d[0])throw new Error('Destination not found');return[+d[0].lat,+d[0].lon]}
+async function routeBetween(a,b){const u=`https://router.project-osrm.org/route/v1/driving/${a[1]},${a[0]};${b[1]},${b[0]}?overview=full&geometries=geojson&steps=true`;const r=await fetch(u);const d=await r.json();if(!d.routes?.[0])throw new Error('No route returned');const x=d.routes[0],leg=x.legs?.[0];return{coords:x.geometry.coordinates.map(c=>[c[1],c[0]]),miles:x.distance/1609.344,hours:x.duration/3600,steps:(leg?.steps||[]).map(s=>({name:s.name||'',distance:s.distance,duration:s.duration,maneuver:s.maneuver,coords:s.geometry?.coordinates?.map(c=>[c[1],c[0]])||[]}))}}
+function nearestIdx(ll){let bi=0,bd=Infinity;routeCoords.forEach((p,i)=>{const d=map.distance(ll,p);if(d<bd){bd=d;bi=i}});return bi}
+function remainingMiles(ll){if(!routeCoords.length)return trip.distance;const i=nearestIdx(ll);let m=map.distance(ll,routeCoords[i]);for(let x=i;x<routeCoords.length-1;x++)m+=map.distance(routeCoords[x],routeCoords[x+1]);return m/1609.344}
+function pointAlongRoute(targetMiles){let left=targetMiles*1609.344;for(let i=0;i<routeCoords.length-1;i++){const seg=map.distance(routeCoords[i],routeCoords[i+1]);if(seg>=left){const f=left/seg;return[routeCoords[i][0]+(routeCoords[i+1][0]-routeCoords[i][0])*f,routeCoords[i][1]+(routeCoords[i+1][1]-routeCoords[i][1])*f]}left-=seg}return routeCoords[routeCoords.length-1]}
+async function reverseName(latlng){try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng[0]}&lon=${latlng[1]}&zoom=12`);const d=await r.json();return d.address?.city||d.address?.town||d.address?.village||d.address?.county||'Near shutdown point'}catch(e){return'Near shutdown point'}}
+async function shutdownSuggestion(){const usable=Math.max(0,usableHours());const target=Math.min(trip.distance,Math.max(0,(usable-.15)*trip.speed));const pt=pointAlongRoute(target);if(shutdownMarker&&map.hasLayer(shutdownMarker))map.removeLayer(shutdownMarker);shutdownMarker=L.marker(pt).addTo(map).bindPopup('Recommended shutdown area');const place=await reverseName(pt);const remain=Math.max(0,usable-target/trip.speed);$('stopName').textContent=`${place} area`;$('stopDetail').textContent=`About ${Math.round(target)} miles ahead · roughly ${Math.round(remain*60)} minutes of drive time left at arrival`}
+function updateTrip(dest){$('summaryLabel').textContent='Current route';$('summaryTitle').textContent=dest;$('summarySub').textContent=`${Math.round(trip.distance)} mi · ${fmtHours(trip.duration)}`;$('distance').textContent=`${Math.round(trip.distance)} mi`;$('driveTime').textContent=fmtHours(trip.duration);$('rangeMiles').textContent=`${Math.round(legalMiles())} mi`;$('eta').textContent=new Date(Date.now()+(trip.duration+trip.delay/60)*3600000).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});updateClocks();status(trip.distance<=legalMiles()?'● WITHIN LEGAL RANGE':'● STOP REQUIRED',trip.distance<=legalMiles()?'':'stop');$('start').disabled=false}
+function updateClocks(){$('driveCircle').textContent=fmtClock(trip.drive);$('dutyCircle').textContent=fmtClock(trip.duty);$('cycleCircle').textContent=fmtClock(trip.cycle);$('rangeMiles').textContent=`${Math.round(legalMiles())} mi`}
+$('plan').addEventListener('click',()=>$('planner').classList.add('open'));$('closePlanner').addEventListener('click',()=>$('planner').classList.remove('open'));
+$('calculate').addEventListener('click',async()=>{if(!currentPosition){$('plannerMessage').textContent='Current location unavailable.';return}const dest=$('destination').value.trim();if(!dest){$('plannerMessage').textContent='Enter a destination.';return}const b=$('calculate');b.disabled=true;b.textContent='Calculating…';try{const end=await geocode(dest),r=await routeBetween(currentPosition,end);trip={drive:+$('driveHours').value,duty:+$('dutyHours').value,cycle:+$('cycleHours').value,speed:+$('planningSpeed').value,buffer:+$('buffer').value,delay:+$('delay').value,distance:r.miles,duration:r.hours};initial={drive:trip.drive,duty:trip.duty,cycle:trip.cycle};steps=r.steps;drawRoute(r.coords,end);routeReady=true;updateTrip(dest);await shutdownSuggestion();$('planner').classList.remove('open');setSheet(0)}catch(e){$('plannerMessage').textContent=e.message+'. Check internet.'}finally{b.disabled=false;b.textContent='Calculate Route'}});
+function stepForPosition(ll){let best=null,bd=Infinity;steps.forEach((s,i)=>{const c=s.maneuver?.location;if(!c)return;const p=[c[1],c[0]],d=map.distance(ll,p);if(d<bd){bd=d;best={...s,index:i,distanceTo:d}}});return best}
+function arrowFor(type,modifier){if(type==='turn'){if(modifier?.includes('left'))return'↰';if(modifier?.includes('right'))return'↱'}if(type==='roundabout')return'⟳';if(type==='uturn')return'↶';return'↑'}
+function updateTurn(ll){const s=stepForPosition(ll);if(!s)return;const m=s.maneuver||{};$('turnArrow').textContent=arrowFor(m.type,m.modifier);$('turnDistance').textContent=s.distanceTo<1609?`${Math.max(50,Math.round(s.distanceTo/10)*10)} ft`:`${(s.distanceTo/1609.344).toFixed(1)} mi`;$('turnInstruction').textContent=s.name?`${m.type==='arrive'?'Arrive at':'Continue on'} ${s.name}`:'Continue on route';const match=(s.name||'').match(/\b(?:I-|US-)?(\d{1,3})\b/i);$('turnShield').textContent=match?.[1]||'--'}
+function computeSpeed(p){if(Number.isFinite(p.coords.speed)&&p.coords.speed>=0)return p.coords.speed*2.236936;if(lastFix&&lastFixTime){const sec=(p.timestamp-lastFixTime)/1000;if(sec>.7){return map.distance([lastFix.coords.latitude,lastFix.coords.longitude],[p.coords.latitude,p.coords.longitude])/sec*2.236936}}return currentSpeed}
+function forwardPoint(lat,lon,h,m){const R=6378137,b=(h||0)*Math.PI/180,la=lat*Math.PI/180,lo=lon*Math.PI/180,d=m/R,la2=Math.asin(Math.sin(la)*Math.cos(d)+Math.cos(la)*Math.sin(d)*Math.cos(b)),lo2=lo+Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(la),Math.cos(d)-Math.sin(la)*Math.sin(la2));return[la2*180/Math.PI,lo2*180/Math.PI]}
+function tickClocks(){if(!driving||!startStamp)return;const elapsed=(Date.now()-startStamp)/3600000;trip.duty=Math.max(0,initial.duty-elapsed);trip.cycle=Math.max(0,initial.cycle-elapsed);if(currentSpeed>3)trip.drive=Math.max(0,initial.drive-elapsed);updateClocks();if(rangeCircle){rangeCircle.setRadius(legalMiles()*1609.344)}}
+async function wake(){try{if('wakeLock'in navigator)wakeLock=await navigator.wakeLock.request('screen')}catch(e){}}
+function onPos(p){setDriver(p.coords.latitude,p.coords.longitude,p.coords.heading);currentSpeed=Math.max(0,computeSpeed(p));$('speedNow').textContent=Math.round(currentSpeed);if(driving){const rem=remainingMiles(currentPosition);trip.distance=rem;trip.duration=rem/Math.max(15,currentSpeed>10?currentSpeed:trip.speed);$('distance').textContent=`${Math.round(rem)} mi`;$('driveTime').textContent=fmtHours(trip.duration);$('summarySub').textContent=`${Math.round(rem)} mi · ${fmtHours(trip.duration)}`;$('eta').textContent=new Date(Date.now()+trip.duration*3600000).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});updateTurn(currentPosition);if(followMode)map.setView(forwardPoint(currentPosition[0],currentPosition[1],currentHeading,240),17,{animate:true,duration:.3});if(routeLine)routeLine.bringToFront()}lastFix=p;lastFixTime=p.timestamp}
+function startNav(){if(!routeReady)return;driving=true;followMode=true;startStamp=Date.now();$('start').textContent='END ROUTE';$('start').classList.add('running');$('turn').classList.add('visible');$('brand').classList.add('hidden');$('right').classList.add('routeActive');$('clockRail').classList.add('routeActive');$('resume').classList.remove('visible');watchId=navigator.geolocation.watchPosition(onPos,()=>toast('GPS unavailable.',true),{enableHighAccuracy:true,maximumAge:500,timeout:15000});timerId=setInterval(tickClocks,1000);wake();setSheet(0)}
+function stopNav(){driving=false;$('start').textContent='START ROUTE';$('start').classList.remove('running');$('turn').classList.remove('visible');$('brand').classList.remove('hidden');$('right').classList.remove('routeActive');$('clockRail').classList.remove('routeActive');$('resume').classList.remove('visible');if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}if(timerId){clearInterval(timerId);timerId=null}if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null}if(routeCoords.length)map.fitBounds(L.latLngBounds(routeCoords),{paddingTopLeft:[65,170],paddingBottomRight:[65,200]})}
+$('start').addEventListener('click',()=>driving?stopNav():startNav());$('resume').addEventListener('click',()=>{followMode=true;$('resume').classList.remove('visible')});$('recenter').addEventListener('click',()=>{followMode=true;$('resume').classList.remove('visible');if(currentPosition)map.setView(currentPosition,driving?17:14)});$('zoomIn').addEventListener('click',()=>map.zoomIn());$('zoomOut').addEventListener('click',()=>map.zoomOut());
+$('clear').addEventListener('click',()=>{if(driving)stopNav();clearLayers();routeReady=false;routeCoords=[];steps=[];$('start').disabled=true;$('summaryLabel').textContent='Current location';$('summaryTitle').textContent='Ready from your current location';$('summarySub').textContent='Tap Plan Route to choose a destination';$('eta').textContent=$('distance').textContent=$('driveTime').textContent='--';$('stopName').textContent='Plan a route to calculate';$('stopDetail').textContent='Road Clock will aim near the end of your usable drive clock with a safety reserve.';status('CURRENT LOCATION','neutral');if(currentPosition)map.setView(currentPosition,14)});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&driving&&!wakeLock)wake()});
+initMap();setSheet(0);updateClocks();if('serviceWorker'in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('./service-worker.js').then(r=>r.update()).catch(()=>{});
 </script>
 </body>
 </html>

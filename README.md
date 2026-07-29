@@ -1,20 +1,27 @@
-# Road Clock Alpha 4
+# Road Clock Alpha 5
 
-## What changed
+## Included
 
-- Edge-to-edge map layout for installed iPhone use
-- No default Nashville-to-Indianapolis route
-- Opens at the driver's current GPS location
-- Start Route is contained inside the bottom sheet and no longer overlaps status text
-- Smoother Leaflet rendering without the CSS map tilt that caused glitches
-- Route line remains visible during live tracking
-- Cleaner route-planning state
-- Start Route stays disabled until a route is calculated
-- Improved service-worker updating to reduce stale cached versions
+- Polished dark vector-style basemap from CARTO/OpenStreetMap
+- Three circular Drive, Duty and Cycle clocks on the left
+- One-button clock rail collapse
+- Drive clock counts down while moving
+- Duty and Cycle clocks count down while navigation is active
+- Route-distance and ETA updates from live route progress
+- Turn banner changes from nearby route-step data
+- Manual map exploration pauses follow mode
+- Resume button restores navigation follow
+- Route line stays visible while driving
+- Shutdown target is placed near the end of the usable clock with a safety reserve
+- Current-location startup and draggable trip sheet
 
-## Upload to GitHub
+## Important limitations
 
-Replace these files at the top level of your repository:
+This is still a browser-based alpha, not an ELD, legal advice, or approved commercial navigation. Public routing and map services can be slow or unavailable. The shutdown result is an estimated area, not yet a verified coach/truck parking facility. Reliable speed limits, traffic, commercial restrictions, voice navigation and verified stops require production data providers and a native application.
+
+## GitHub deployment
+
+Upload these five individual files to the top level of the GitHub repository, replacing the prior versions:
 
 - index.html
 - manifest.json
@@ -22,20 +29,4 @@ Replace these files at the top level of your repository:
 - netlify.toml
 - README.md
 
-Upload the individual files, not the ZIP.
-
-## Full-screen iPhone use
-
-Safari itself always shows browser controls. For the edge-to-edge version:
-
-1. Open the Netlify site in Safari.
-2. Tap Share.
-3. Tap Add to Home Screen.
-4. Launch Road Clock from the new Home Screen icon.
-
-## Alpha limitations
-
-- This is not an ELD or approved commercial routing system.
-- Routing currently uses a public passenger-car routing service.
-- Speed limits remain unavailable until a reliable provider is connected.
-- iOS may pause web GPS when Road Clock is backgrounded or the phone locks.
+Do not upload the ZIP itself.
