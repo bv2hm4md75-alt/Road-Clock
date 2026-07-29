@@ -8,17 +8,17 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="./manifest.json">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<title>Road Clock Alpha 6</title>
+<title>Road Clock Alpha 7</title>
 <style>
 :root{
   --green:#5af27f;--green2:#178844;--bg:#07110b;--panel:rgba(5,12,7,.97);
   --muted:#9dac9f;--line:#26372c;--blue:#2f82ff;--red:#ff6f7d;--amber:#ffc95b;
-  --sheet-c:150px;--sheet-m:370px;--sheet-f:74vh;
+  --sheet-c:112px;--sheet-m:410px;--sheet-f:88dvh;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:#fff;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+html,body{width:100%;height:100%;min-height:100%;margin:0;overflow:hidden;background:var(--bg);color:#fff;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 button,input{font:inherit}button{cursor:pointer}
-#app{position:fixed;inset:0;overflow:hidden;background:#09120d}
+#app{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;min-height:-webkit-fill-available;overflow:hidden;background:#09120d}
 #map{position:absolute;inset:0;z-index:1;background:#09120d}
 .leaflet-container{background:#09120d}
 .leaflet-control-attribution{font-size:7px!important;opacity:.45}
@@ -41,16 +41,16 @@ button,input{font:inherit}button{cursor:pointer}
 .clockCircle small{display:block;font-size:8px;font-weight:900}.clockCircle b{display:block;font-size:15px;margin-top:2px}.clockCircle.drive small{color:var(--green)}.clockCircle.duty small{color:var(--amber)}.clockCircle.cycle small{color:#75b0ff}
 .status{position:absolute;z-index:850;left:14px;bottom:calc(var(--sheet-c) + 14px);padding:9px 11px;border-radius:13px;background:rgba(3,9,5,.92);border:1px solid #2a5536;color:var(--green);font-size:10px;font-weight:900;transition:bottom .25s}.status.stop{color:var(--red);border-color:#66313a}.status.neutral{color:#d7e2da;border-color:#465047}
 .toast{position:absolute;z-index:920;left:50%;transform:translateX(-50%);top:calc(116px + env(safe-area-inset-top));max-width:82%;display:none;padding:8px 11px;border-radius:12px;background:rgba(4,10,6,.94);border:1px solid #304536;color:#e3ece5;font-size:11px;text-align:center}
-.sheet{position:absolute;z-index:1000;left:0;right:0;bottom:0;height:var(--sheet-m);border-radius:26px 26px 0 0;background:var(--panel);border-top:1px solid var(--line);backdrop-filter:blur(18px);box-shadow:0 -12px 34px rgba(0,0,0,.42);transform:translateY(calc(var(--sheet-m) - var(--sheet-c)));transition:transform .25s;touch-action:none;overflow:hidden;padding-bottom:env(safe-area-inset-bottom)}
-.sheet.mid{transform:translateY(0)}.sheet.full{height:var(--sheet-f);transform:translateY(0)}
-.handleArea{height:30px;display:grid;place-items:center}.handle{width:48px;height:5px;border-radius:99px;background:#66736a}.sheetContent{height:calc(100% - 30px);overflow:auto;padding:0 16px 18px}
+.sheet{position:absolute;z-index:1000;left:0;right:0;bottom:0;height:var(--sheet-m);border-radius:26px 26px 0 0;background:var(--panel);border-top:1px solid var(--line);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);box-shadow:0 -12px 34px rgba(0,0,0,.42);transform:translate3d(0,calc(var(--sheet-m) - var(--sheet-c)),0);transition:transform .24s cubic-bezier(.2,.8,.2,1),height .24s cubic-bezier(.2,.8,.2,1);touch-action:none;overflow:hidden;padding-bottom:max(env(safe-area-inset-bottom),10px);will-change:transform}
+.sheet.mid{transform:translate3d(0,0,0)}.sheet.full{height:var(--sheet-f);transform:translate3d(0,0,0)}
+.handleArea{height:30px;display:grid;place-items:center}.handle{width:48px;height:5px;border-radius:99px;background:#66736a}.sheetContent{height:calc(100% - 30px);overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:0 16px max(18px,env(safe-area-inset-bottom))}
 .collapsedRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center}.routeSummary small{display:block;color:var(--muted);font-size:9px;text-transform:uppercase}.routeSummary b{display:block;margin-top:4px;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.routeSummary span{display:block;margin-top:4px;color:#c7d1ca;font-size:11px}
 .start{min-width:132px;border:1px solid #6cff94;border-radius:15px;padding:13px 15px;background:linear-gradient(135deg,#2dcc64,#15823f);color:#fff;font-weight:900}.start:disabled{opacity:.45}.start.running{background:#101914;border-color:#4b5b50}
 .expanded{margin-top:16px;border-top:1px solid #253027;padding-top:14px}.actions{display:flex;gap:9px;margin-bottom:14px}.secondary{flex:1;border:1px solid #2b4933;background:#0d1911;color:var(--green);border-radius:12px;padding:10px;font-weight:800}.secondary.light{color:#fff;border-color:#3a463e}
-.metrics{display:grid;grid-template-columns:repeat(4,1fr)}.metric{padding:0 9px;border-left:1px solid #263128}.metric:first-child{border-left:0;padding-left:0}.metric small,.stopBox small{font-size:9px;color:var(--muted);text-transform:uppercase}.metric b{display:block;margin-top:5px;font-size:15px}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr)}.metric{padding:0 9px;border-left:1px solid #263128}.metric:first-child{border-left:0;padding-left:0}.metric small,.stopBox small{font-size:9px;color:var(--muted);text-transform:uppercase}.metric b{display:block;margin-top:5px;font-size:15px}
 .stopBox{margin-top:16px;padding:13px;border:1px solid #2b4733;border-radius:15px;background:#09130d}.stopBox b{display:block;margin-top:5px}.stopBox span{display:block;margin-top:4px;font-size:11px;color:var(--muted)}
 .note{margin-top:14px;border-left:3px solid var(--green);padding:10px 12px;background:#09120c;font-size:11px;color:#c8d3cb;line-height:1.45}
-.planner{position:absolute;z-index:1400;inset:0;display:none;overflow:auto;background:#030704;padding:calc(18px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))}.planner.open{display:block}.plannerHead{display:flex;justify-content:space-between;align-items:center}.plannerHead h2{margin:0}.close{width:42px;height:42px;border-radius:50%;border:1px solid #304036;background:#0b140e;color:#fff}.card{margin-top:18px;border:1px solid #25352a;border-radius:18px;padding:15px;background:#0a110c}
+.planner{position:fixed;z-index:1400;inset:0;width:100%;height:100vh;height:100dvh;min-height:-webkit-fill-available;display:none;overflow:auto;background:#030704;padding:calc(18px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))}.planner.open{display:block}.plannerHead{display:flex;justify-content:space-between;align-items:center}.plannerHead h2{margin:0}.close{width:42px;height:42px;border-radius:50%;border:1px solid #304036;background:#0b140e;color:#fff}.card{margin-top:18px;border:1px solid #25352a;border-radius:18px;padding:15px;background:#0a110c}
 label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{width:100%;border:1px solid #2a3b2e;border-radius:12px;background:#061009;color:#fff;padding:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.primary{width:100%;margin-top:16px;border:0;border-radius:14px;padding:14px;background:var(--green);color:#041007;font-weight:900}.helper{font-size:11px;color:#aab6ae;line-height:1.45}
 .driverIcon{width:38px;height:38px;display:grid;place-items:center;transform-origin:center}
 @media(max-width:390px){
@@ -76,6 +76,38 @@ label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{wi
 }
 .planPrimary span{display:block;margin-top:4px;font-size:11px;font-weight:700;color:#caffd6}
 
+
+.driveCollapsedMetrics{display:none;grid-template-columns:repeat(3,1fr);align-items:center;height:72px}
+.driveCollapsedMetrics .metric{text-align:center;padding:0 10px}
+.driveCollapsedMetrics .metric b{font-size:20px}
+.driveCollapsedMetrics .metric small{font-size:10px}
+.sheet.drivingState .driveCollapsedMetrics{display:grid}
+.sheet.drivingState .collapsedRow{display:none}
+.sheet.drivingState .expanded{margin-top:10px}
+.sheet.drivingState:not(.mid):not(.full) .expanded{display:none}
+.sheet.drivingState:not(.mid):not(.full) .driveCollapsedMetrics{display:grid}
+.sheet.drivingState.mid .driveCollapsedMetrics,
+.sheet.drivingState.full .driveCollapsedMetrics{display:none}
+.sheet.drivingState.mid .expanded,
+.sheet.drivingState.full .expanded{display:block}
+.sheet.drivingState .actions{display:none}
+.sheet.drivingState .metrics{grid-template-columns:repeat(3,1fr)}
+.sheet.drivingState .routeSummary{display:none}
+.sheet.drivingState .stopBox{display:block}
+.driveControls{display:none;gap:10px;margin-top:14px}
+.sheet.drivingState .driveControls{display:flex}
+.pauseDrive,.endRoute{
+  flex:1;border-radius:14px;padding:13px 12px;font-weight:900
+}
+.pauseDrive{border:1px solid #7b6232;background:#171208;color:var(--amber)}
+.pauseDrive.paused{border-color:#4d8f5c;background:#09150d;color:var(--green)}
+.endRoute{border:1px solid #66ff91;background:linear-gradient(135deg,#2dcc64,#15823f);color:white}
+.clockCircle.drive.paused{border-color:var(--amber);box-shadow:0 0 0 3px rgba(255,201,91,.12),0 7px 18px rgba(0,0,0,.34)}
+.clockCircle.drive.paused small{color:var(--amber)}
+.clockCircle.drive.paused b{color:var(--amber)}
+.pauseHint{display:none;margin-top:8px;text-align:center;font-size:10px;color:var(--muted)}
+.sheet.drivingState .pauseHint{display:block}
+
 </style>
 </head>
 <body>
@@ -93,10 +125,25 @@ label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{wi
 </div>
 <div id="plannedRouteState" class="plannedRouteState">
   <div class="collapsedRow"><div class="routeSummary"><small>Planned route</small><b id="plannedTitle">Destination</b><span id="plannedSub">Ready to begin</span></div><button id="start" class="start">START ROUTE</button></div>
-  <div class="expanded"><div class="actions"><button id="plan" class="secondary">Edit Route</button><button id="clear" class="secondary light">Clear Route</button></div>
-<div class="metrics"><div class="metric"><small>ETA</small><b id="eta">--</b></div><div class="metric"><small>Distance</small><b id="distance">--</b></div><div class="metric"><small>Drive time</small><b id="driveTime">--</b></div><div class="metric"><small>Range</small><b id="rangeMiles">349 mi</b></div></div>
-<div class="stopBox"><small>Recommended shutdown</small><b id="stopName">Plan a route to calculate</b><span id="stopDetail">Road Clock will aim near the end of your usable drive clock with a safety reserve.</span></div>
-<div class="note">Alpha 6 improves live clocks, route progress, map exploration, turn updates and shutdown planning. It remains a prototype, not an ELD or commercial routing system.</div>
+  <div class="driveCollapsedMetrics">
+    <div class="metric"><small>ETA</small><b id="etaCompact">--</b></div>
+    <div class="metric"><small>Distance</small><b id="distanceCompact">--</b></div>
+    <div class="metric"><small>Drive time</small><b id="driveTimeCompact">--</b></div>
+  </div>
+  <div class="expanded">
+    <div class="actions"><button id="plan" class="secondary">Edit Route</button><button id="clear" class="secondary light">Clear Route</button></div>
+    <div class="metrics">
+      <div class="metric"><small>ETA</small><b id="eta">--</b></div>
+      <div class="metric"><small>Distance</small><b id="distance">--</b></div>
+      <div class="metric"><small>Drive time</small><b id="driveTime">--</b></div>
+    </div>
+    <div class="stopBox"><small>Recommended shutdown</small><b id="stopName">Plan a route to calculate</b><span id="stopDetail">Road Clock will aim near the end of your usable drive clock with a safety reserve.</span></div>
+    <div class="driveControls">
+      <button id="pauseDrive" class="pauseDrive">PAUSE DRIVE CLOCK</button>
+      <button id="endRoute" class="endRoute">END ROUTE</button>
+    </div>
+    <div class="pauseHint">Pausing affects the Drive clock only. Duty and Cycle continue counting down.</div>
+    <div class="note">Alpha 7 improves live clocks, route progress, map exploration, turn updates and shutdown planning. It remains a prototype, not an ELD or commercial routing system.</div>
   </div>
 </div>
 </div></section>
@@ -111,7 +158,7 @@ const $=id=>document.getElementById(id);
 let map,routeUnder,routeLine,rangeCircle,destinationMarker,shutdownMarker,driverMarker;
 let currentPosition=null,currentHeading=0,currentSpeed=0,watchId=null,wakeLock=null;
 let routeCoords=[],steps=[],routeReady=false,driving=false,followMode=true,sheetState=0;
-let dragging=false,dragStart=0,dragNow=0,lastFix=null,lastFixTime=null,timerId=null,startStamp=null;
+let dragging=false,dragStart=0,dragNow=0,lastFix=null,lastFixTime=null,timerId=null,lastClockTick=null,driveClockPaused=false;
 let trip={drive:6.7,duty:9.25,cycle:42.6,speed:55,buffer:.5,delay:0,distance:0,duration:0};
 let initial={drive:6.7,duty:9.25,cycle:42.6};
 const fallback=[39.8283,-98.5795];
@@ -141,7 +188,15 @@ function setDriver(lat,lon,h=0){currentPosition=[lat,lon];currentHeading=Number.
 function locate(){if(!navigator.geolocation){status('LOCATION UNAVAILABLE');return}navigator.geolocation.getCurrentPosition(p=>{setDriver(p.coords.latitude,p.coords.longitude,p.coords.heading);map.setView(currentPosition,14);status('CURRENT LOCATION');$('summaryTitle').textContent='Ready from your current location';$('summarySub').textContent='Tap Plan Route to choose a destination'},()=>{status('LOCATION NEEDED');$('summaryTitle').textContent='Location permission needed';toast('Allow Precise Location for Road Clock.',true)},{enableHighAccuracy:true,timeout:12000,maximumAge:20000})}
 function clearLayers(){[routeUnder,routeLine,rangeCircle,destinationMarker,shutdownMarker].forEach(l=>{if(l&&map.hasLayer(l))map.removeLayer(l)});routeUnder=routeLine=rangeCircle=destinationMarker=shutdownMarker=null}
 function drawRoute(coords,end){clearLayers();routeCoords=coords;routeUnder=L.polyline(coords,{color:'#06101d',weight:14,opacity:.92,lineCap:'round',lineJoin:'round'}).addTo(map);routeLine=L.polyline(coords,{color:'#2f82ff',weight:8,opacity:1,lineCap:'round',lineJoin:'round'}).addTo(map);destinationMarker=L.marker(end).addTo(map);if(currentPosition)rangeCircle=L.circle(currentPosition,{radius:legalMiles()*1609.344,color:'#5af27f',weight:3,fillColor:'#5af27f',fillOpacity:.07}).addTo(map);map.fitBounds(L.latLngBounds(coords),{paddingTopLeft:[65,170],paddingBottomRight:[65,200]})}
-function setSheet(s){sheetState=Math.max(0,Math.min(2,s));$('sheet').className='sheet'+(sheetState===1?' mid':sheetState===2?' full':'');const lift=sheetState===0?'calc(var(--sheet-c) + 14px)':sheetState===1?'calc(var(--sheet-m) + 14px)':'calc(var(--sheet-f) + 14px)';$('status').style.bottom=lift}
+function setSheet(s){
+  sheetState=Math.max(0,Math.min(2,s));
+  const sheet=$('sheet');
+  sheet.classList.remove('mid','full');
+  if(sheetState===1)sheet.classList.add('mid');
+  if(sheetState===2)sheet.classList.add('full');
+  const lift=sheetState===0?'calc(var(--sheet-c) + 14px)':sheetState===1?'calc(var(--sheet-m) + 14px)':'calc(var(--sheet-f) + 14px)';
+  $('status').style.bottom=lift;
+}
 $('handleArea').addEventListener('pointerdown',e=>{dragging=true;dragStart=e.clientY;dragNow=e.clientY;$('handleArea').setPointerCapture(e.pointerId)});$('handleArea').addEventListener('pointermove',e=>{if(dragging)dragNow=e.clientY});$('handleArea').addEventListener('pointerup',()=>{if(!dragging)return;dragging=false;const d=dragNow-dragStart;if(d<-35)setSheet(sheetState+1);else if(d>35)setSheet(sheetState-1);else setSheet(sheetState===0?1:0)});
 $('clockToggle').addEventListener('click',()=>{const s=$('clockStack');s.classList.toggle('collapsed');$('clockToggle').textContent=s.classList.contains('collapsed')?'›':'‹'});
 
@@ -221,20 +276,35 @@ async function shutdownSuggestion(){
   }
 }
 function showEmptyState(){
-  $('sheet').classList.remove('hasRoute','mid','full');
+  $('sheet').classList.remove('hasRoute','drivingState','mid','full');
   $('sheet').classList.add('emptyState');
   sheetState=0;
   $('status').style.bottom='calc(250px + env(safe-area-inset-bottom) + 14px)';
 }
 function showPlannedState(dest){
-  $('sheet').classList.remove('emptyState');
+  $('sheet').classList.remove('emptyState','drivingState');
   $('sheet').classList.add('hasRoute');
   $('plannedTitle').textContent=dest;
   $('plannedSub').textContent=`${Math.round(trip.distance)} mi · ${fmtHours(trip.duration)}`;
   setSheet(0);
 }
-function updateTrip(dest){showPlannedState(dest);$('distance').textContent=`${Math.round(trip.distance)} mi`;$('driveTime').textContent=fmtHours(trip.duration);$('rangeMiles').textContent=`${Math.round(legalMiles())} mi`;$('eta').textContent=new Date(Date.now()+(trip.duration+trip.delay/60)*3600000).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});updateClocks();status(trip.distance<=legalMiles()?'● WITHIN LEGAL RANGE':'● STOP REQUIRED',trip.distance<=legalMiles()?'':'stop');}
-function updateClocks(){$('driveCircle').textContent=fmtClock(trip.drive);$('dutyCircle').textContent=fmtClock(trip.duty);$('cycleCircle').textContent=fmtClock(trip.cycle);$('rangeMiles').textContent=`${Math.round(legalMiles())} mi`}
+function updateTrip(dest){
+  showPlannedState(dest);
+  updateTripMetrics();
+  updateClocks();
+  status(trip.distance<=legalMiles()?'● WITHIN LEGAL RANGE':'● STOP REQUIRED',trip.distance<=legalMiles()?'':'stop');}
+function updateClocks(){
+  $('driveCircle').textContent=fmtClock(trip.drive);
+  $('dutyCircle').textContent=fmtClock(trip.duty);
+  $('cycleCircle').textContent=fmtClock(trip.cycle);
+}
+function updateTripMetrics(){
+  const etaText=new Date(Date.now()+(trip.duration+trip.delay/60)*3600000).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+  const distText=`${Math.round(trip.distance)} mi`;
+  const driveText=fmtHours(trip.duration);
+  $('eta').textContent=etaText;$('distance').textContent=distText;$('driveTime').textContent=driveText;
+  $('etaCompact').textContent=etaText;$('distanceCompact').textContent=distText;$('driveTimeCompact').textContent=driveText;
+} mi`}
 $('planPrimary').addEventListener('click',()=>$('planner').classList.add('open'));
 $('plan').addEventListener('click',()=>$('planner').classList.add('open'));$('closePlanner').addEventListener('click',()=>$('planner').classList.remove('open'));
 $('calculate').addEventListener('click',async()=>{if(!currentPosition){$('plannerMessage').textContent='Current location unavailable.';return}const dest=$('destination').value.trim();if(!dest){$('plannerMessage').textContent='Enter a destination.';return}const b=$('calculate');b.disabled=true;b.textContent='Calculating…';try{const end=await geocode(dest),r=await routeBetween(currentPosition,end);trip={drive:+$('driveHours').value,duty:+$('dutyHours').value,cycle:+$('cycleHours').value,speed:+$('planningSpeed').value,buffer:+$('buffer').value,delay:+$('delay').value,distance:r.miles,duration:r.hours};initial={drive:trip.drive,duty:trip.duty,cycle:trip.cycle};steps=r.steps;drawRoute(r.coords,end);routeReady=true;updateTrip(dest);await shutdownSuggestion();$('planner').classList.remove('open');setSheet(0)}catch(e){$('plannerMessage').textContent=e.message+'. Check internet.'}finally{b.disabled=false;b.textContent='Calculate Route'}});
@@ -243,12 +313,52 @@ function arrowFor(type,modifier){if(type==='turn'){if(modifier?.includes('left')
 function updateTurn(ll){const s=stepForPosition(ll);if(!s)return;const m=s.maneuver||{};$('turnArrow').textContent=arrowFor(m.type,m.modifier);$('turnDistance').textContent=s.distanceTo<1609?`${Math.max(50,Math.round(s.distanceTo/10)*10)} ft`:`${(s.distanceTo/1609.344).toFixed(1)} mi`;$('turnInstruction').textContent=s.name?`${m.type==='arrive'?'Arrive at':'Continue on'} ${s.name}`:'Continue on route';const match=(s.name||'').match(/\b(?:I-|US-)?(\d{1,3})\b/i);$('turnShield').textContent=match?.[1]||'--'}
 function computeSpeed(p){if(Number.isFinite(p.coords.speed)&&p.coords.speed>=0)return p.coords.speed*2.236936;if(lastFix&&lastFixTime){const sec=(p.timestamp-lastFixTime)/1000;if(sec>.7){return map.distance([lastFix.coords.latitude,lastFix.coords.longitude],[p.coords.latitude,p.coords.longitude])/sec*2.236936}}return currentSpeed}
 function forwardPoint(lat,lon,h,m){const R=6378137,b=(h||0)*Math.PI/180,la=lat*Math.PI/180,lo=lon*Math.PI/180,d=m/R,la2=Math.asin(Math.sin(la)*Math.cos(d)+Math.cos(la)*Math.sin(d)*Math.cos(b)),lo2=lo+Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(la),Math.cos(d)-Math.sin(la)*Math.sin(la2));return[la2*180/Math.PI,lo2*180/Math.PI]}
-function tickClocks(){if(!driving||!startStamp)return;const elapsed=(Date.now()-startStamp)/3600000;trip.duty=Math.max(0,initial.duty-elapsed);trip.cycle=Math.max(0,initial.cycle-elapsed);if(currentSpeed>3)trip.drive=Math.max(0,initial.drive-elapsed);updateClocks();if(rangeCircle){rangeCircle.setRadius(legalMiles()*1609.344)}}
+function tickClocks(){
+  if(!driving)return;
+  const now=Date.now();
+  if(!lastClockTick){lastClockTick=now;return}
+  const deltaHours=Math.min((now-lastClockTick)/3600000,0.01);
+  lastClockTick=now;
+  trip.duty=Math.max(0,trip.duty-deltaHours);
+  trip.cycle=Math.max(0,trip.cycle-deltaHours);
+  if(!driveClockPaused && currentSpeed>3){
+    trip.drive=Math.max(0,trip.drive-deltaHours);
+  }
+  updateClocks();
+  if(rangeCircle)rangeCircle.setRadius(legalMiles()*1609.344);
+}
 async function wake(){try{if('wakeLock'in navigator)wakeLock=await navigator.wakeLock.request('screen')}catch(e){}}
-function onPos(p){setDriver(p.coords.latitude,p.coords.longitude,p.coords.heading);currentSpeed=Math.max(0,computeSpeed(p));$('speedNow').textContent=Math.round(currentSpeed);if(driving){const rem=remainingMiles(currentPosition);trip.distance=rem;trip.duration=rem/Math.max(15,currentSpeed>10?currentSpeed:trip.speed);$('distance').textContent=`${Math.round(rem)} mi`;$('driveTime').textContent=fmtHours(trip.duration);$('summarySub').textContent=`${Math.round(rem)} mi · ${fmtHours(trip.duration)}`;$('eta').textContent=new Date(Date.now()+trip.duration*3600000).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});updateTurn(currentPosition);if(followMode)map.setView(forwardPoint(currentPosition[0],currentPosition[1],currentHeading,240),17,{animate:true,duration:.3});if(routeLine)routeLine.bringToFront()}lastFix=p;lastFixTime=p.timestamp}
-function startNav(){if(!routeReady)return;driving=true;followMode=true;startStamp=Date.now();$('start').textContent='END ROUTE';$('start').classList.add('running');$('turn').classList.add('visible');$('brand').classList.add('hidden');$('right').classList.add('routeActive');$('clockRail').classList.add('routeActive');$('resume').classList.remove('visible');watchId=navigator.geolocation.watchPosition(onPos,()=>toast('GPS unavailable.',true),{enableHighAccuracy:true,maximumAge:500,timeout:15000});timerId=setInterval(tickClocks,1000);wake();setSheet(0)}
-function stopNav(){driving=false;$('start').textContent='START ROUTE';$('start').classList.remove('running');$('turn').classList.remove('visible');$('brand').classList.remove('hidden');$('right').classList.remove('routeActive');$('clockRail').classList.remove('routeActive');$('resume').classList.remove('visible');if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}if(timerId){clearInterval(timerId);timerId=null}if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null}if(routeCoords.length)map.fitBounds(L.latLngBounds(routeCoords),{paddingTopLeft:[65,170],paddingBottomRight:[65,200]})}
-$('start').addEventListener('click',()=>driving?stopNav():startNav());$('resume').addEventListener('click',()=>{followMode=true;$('resume').classList.remove('visible')});$('recenter').addEventListener('click',()=>{followMode=true;$('resume').classList.remove('visible');if(currentPosition)map.setView(currentPosition,driving?17:14)});$('zoomIn').addEventListener('click',()=>map.zoomIn());$('zoomOut').addEventListener('click',()=>map.zoomOut());
+function onPos(p){setDriver(p.coords.latitude,p.coords.longitude,p.coords.heading);currentSpeed=Math.max(0,computeSpeed(p));$('speedNow').textContent=Math.round(currentSpeed);if(driving){const rem=remainingMiles(currentPosition);trip.distance=rem;trip.duration=rem/Math.max(15,currentSpeed>10?currentSpeed:trip.speed);updateTripMetrics();$('plannedSub').textContent=`${Math.round(rem)} mi · ${fmtHours(trip.duration)}`;updateTurn(currentPosition);if(followMode)map.setView(forwardPoint(currentPosition[0],currentPosition[1],currentHeading,240),17,{animate:true,duration:.3});if(routeLine)routeLine.bringToFront()}lastFix=p;lastFixTime=p.timestamp}
+function startNav(){
+  if(!routeReady)return;
+  driving=true;followMode=true;driveClockPaused=false;lastClockTick=Date.now();
+  $('sheet').classList.add('drivingState');
+  $('pauseDrive').textContent='PAUSE DRIVE CLOCK';$('pauseDrive').classList.remove('paused');
+  document.querySelector('.clockCircle.drive').classList.remove('paused');
+  $('turn').classList.add('visible');$('brand').classList.add('hidden');$('right').classList.add('routeActive');$('clockRail').classList.add('routeActive');$('resume').classList.remove('visible');
+  watchId=navigator.geolocation.watchPosition(onPos,()=>toast('GPS unavailable.',true),{enableHighAccuracy:true,maximumAge:500,timeout:15000});
+  timerId=setInterval(tickClocks,1000);wake();setSheet(0);
+}
+function stopNav(){
+  driving=false;lastClockTick=null;driveClockPaused=false;
+  $('sheet').classList.remove('drivingState');
+  $('turn').classList.remove('visible');$('brand').classList.remove('hidden');$('right').classList.remove('routeActive');$('clockRail').classList.remove('routeActive');$('resume').classList.remove('visible');
+  document.querySelector('.clockCircle.drive').classList.remove('paused');
+  if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}
+  if(timerId){clearInterval(timerId);timerId=null}
+  if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null}
+  if(routeCoords.length)map.fitBounds(L.latLngBounds(routeCoords),{paddingTopLeft:[65,170],paddingBottomRight:[65,200]});
+  setSheet(0);
+}
+$('start').addEventListener('click',startNav);
+$('endRoute').addEventListener('click',stopNav);
+$('pauseDrive').addEventListener('click',()=>{
+  driveClockPaused=!driveClockPaused;
+  $('pauseDrive').textContent=driveClockPaused?'RESUME DRIVE CLOCK':'PAUSE DRIVE CLOCK';
+  $('pauseDrive').classList.toggle('paused',driveClockPaused);
+  document.querySelector('.clockCircle.drive').classList.toggle('paused',driveClockPaused);
+  toast(driveClockPaused?'Drive clock paused. Duty and Cycle continue.':'Drive clock resumed.');
+});$('resume').addEventListener('click',()=>{followMode=true;$('resume').classList.remove('visible')});$('recenter').addEventListener('click',()=>{followMode=true;$('resume').classList.remove('visible');if(currentPosition)map.setView(currentPosition,driving?17:14)});$('zoomIn').addEventListener('click',()=>map.zoomIn());$('zoomOut').addEventListener('click',()=>map.zoomOut());
 $('clear').addEventListener('click',()=>{if(driving)stopNav();clearLayers();routeReady=false;routeCoords=[];steps=[];$('eta').textContent=$('distance').textContent=$('driveTime').textContent='--';$('stopName').textContent='Plan a route to calculate';$('stopDetail').textContent='Road Clock will aim near the end of your usable drive clock with a safety reserve.';status('CURRENT LOCATION','neutral');showEmptyState();if(currentPosition)map.setView(currentPosition,14)});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&driving&&!wakeLock)wake()});
 initMap();showEmptyState();updateClocks();if('serviceWorker'in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('./service-worker.js').then(r=>r.update()).catch(()=>{});

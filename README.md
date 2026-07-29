@@ -1,22 +1,18 @@
-# Road Clock Alpha 6
+# Road Clock Alpha 7
 
-## New in this build
+## Changes
 
-- Cleaner Apple Maps-style empty state
-- One centered Plan Route button before a route exists
-- Start Route appears only after planning
-- Clear Route is hidden until a route exists
-- Bottom sheet fully fills the lower screen area
-- Sharper retina CARTO Voyager map with separate label layer
-- Stronger route rendering
-- Real OpenStreetMap/Overpass lookup near the shutdown target
-- Stop scoring favors highway service areas, rest areas, HGV access, fuel and parking tags
-- Falls back to an estimated area when no verified stop is found
+- True 100dvh full-screen layout with iPhone safe-area handling
+- Smoother GPU-accelerated bottom sheet
+- Collapsed navigation sheet shows only ETA, Distance, and Drive Time
+- Suggested shutdown appears only when the sheet is expanded
+- Plan/Clear controls disappear after navigation begins
+- End Route appears only in the expanded driving sheet
+- Manual Pause Drive Clock / Resume Drive Clock control
+- Pausing affects Drive only; Duty and Cycle continue
+- Delta-based clock countdown prevents time jumps after stopping
+- Live compact trip metrics stay synchronized
 
-## Important stop-data note
+## Upload
 
-Truck-stop suggestions are based on publicly contributed OpenStreetMap tags. Road Clock shows available HGV-access, fuel, services and parking information, but drivers must still verify parking availability and coach suitability before committing.
-
-## GitHub deployment
-
-Upload the five individual files inside the ZIP to the top level of the repository, replacing the previous files.
+Replace the five existing repository files with the individual files inside this ZIP.
