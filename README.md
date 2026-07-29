@@ -1,15 +1,14 @@
-# Road Clock Alpha 10.2
+# Road Clock Alpha 10.3
 
 ## Fixed
 
-- Prevents the MapLibre error: `Style is not done loading`
-- Route drawing now waits for `load` or `style.load`
-- Route layers are safely recreated after light/dark theme changes
-- Default clocks are now:
-  - Drive: 10:00
-  - Duty: 15:00
-  - Cycle: 70:00
-- Route calculation waits for the vector map before drawing
+- ETA, distance, and drive time remain visible in the collapsed driving sheet
+- Programmatic MapLibre camera movement no longer triggers Resume
+- Follow mode pauses only after an actual user touch or drag
+- Resume and recenter reliably restore automatic tracking
+- ETA is formatted in the destination's local time zone
+- Daylight-saving and time-zone changes are reflected in arrival time
+- Drive Time remains elapsed travel time and is not altered by time-zone changes
 
 ## Upload
 
