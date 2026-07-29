@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="./manifest.json">
 <link href="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.css" rel="stylesheet">
-<title>Road Clock Beta 1</title>
+<title>Road Clock Beta 2 RC1</title>
 <style>
 :root{
   --green:#55f17b;--amber:#ffc857;--blue:#59a7ff;--red:#ff6f7d;
@@ -142,7 +142,7 @@ label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{wi
 <body>
 <div id="app">
 <div id="map"></div><div id="toast" class="toast" role="status"></div>
-<div id="brand" class="brand"><div class="logo">RC</div><b>ROAD <span>CLOCK</span><small class="betaTag">BETA 1</small></b></div>
+<div id="brand" class="brand"><div class="logo">RC</div><b>ROAD <span>CLOCK</span><small class="betaTag">BETA 2</small></b></div>
 <div id="turn" class="turn"><div id="turnArrow" class="arrow">↑</div><div class="turnText"><strong id="turnDistance">Continue</strong><span id="turnInstruction">Follow route</span></div><div id="turnShield" class="shield">--</div></div>
 <div id="right" class="right">
   <div class="limit">SPEED LIMIT<strong id="speedLimit">--</strong></div>
@@ -183,7 +183,7 @@ label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{wi
       <div><label>Cycle remaining</label><input id="cycleHours" type="number" step=".25" value="70"></div>
       <div><label>Safety reserve</label><input id="buffer" type="number" step=".25" value=".5"></div>
     </div>
-    <button id="calculate" class="primary">CALCULATE ROUTE</button><button id="demoDrive" class="demoButton">RUN JESSE DEMO DRIVE</button><div class="betaStatus"><span><i id="healthDot" class="healthDot"></i><strong id="healthLabel">SYSTEM READY</strong></span><span id="gpsQuality">GPS --</span></div><div id="routeProgress" class="routeProgress">Preparing route…</div><p id="plannerMessage" class="note">Starts from your current GPS position.</p>
+    <button id="calculate" class="primary">CALCULATE ROUTE</button><button id="demoDrive" class="demoButton">RUN JESSE DEMO DRIVE</button><div class="betaStatus"><span><i id="healthDot" class="healthDot"></i><strong id="healthLabel">BETA 2 READY</strong></span><span id="gpsQuality">GPS --</span></div><div id="routeProgress" class="routeProgress">Preparing route…</div><p id="plannerMessage" class="note">Starts from your current GPS position.</p>
   </div>
 </section>
 
@@ -233,11 +233,13 @@ let lastRawGps=null,lastRawGpsTime=0,predictedTarget=null;
 let lastSpokenAnswer='';
 let driverMarker=null,destinationMarker=null,shutdownMarker=null;
 let lastAcceptedRaw=null,lastAcceptedAt=0,lastCameraAt=0,lastMarkerAt=0;
+let cameraPosition=null,cameraHeading=0,matchedPosition=null,matchedHeading=0;
+let gpsVelocityMps=0,gpsCourse=0,lastRouteMatch=null,lastUiAt=0;
 let gpsAccuracy=Infinity,routeDeviationCount=0,rerouteBusy=false;
 let demoTimer=null,demoIndex=0,demoProgress=0,lastPersistAt=0;
 let lastDestinationQuery='',lastDestinationPoint=null;
 const fallback=[-98.5795,39.8283];
-const RC_STATE_KEY='roadClockBetaStateV1';
+const RC_STATE_KEY='roadClockBetaStateV2';
 
 
 function toast(message,duration=2600){
@@ -522,24 +524,32 @@ function project(p,a,b){
   const dx=bx-ax,dy=by-ay,t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy||1)));
   return{point:[(ax+t*dx)/lonScale,(ay+t*dy)/latScale],distance:Math.hypot(px-(ax+t*dx),py-(ay+t*dy))};
 }
-function matchRoute(pos){
-  if(routeCoords.length<2)return{index:0,point:pos,distance:Infinity};
-  let best={index:routeIndex,point:pos,distance:Infinity,score:Infinity};
-  const start=Math.max(0,routeIndex-25),end=Math.min(routeCoords.length-1,routeIndex+260);
+function matchRoute(pos,commit=false){
+  if(routeCoords.length<2)return{index:0,point:pos,distance:Infinity,heading:currentHeading,score:Infinity};
+  let best={index:routeIndex,point:pos,distance:Infinity,heading:currentHeading,score:Infinity};
+  const start=Math.max(0,routeIndex-18),end=Math.min(routeCoords.length-1,routeIndex+180);
   for(let i=start;i<end;i++){
     const m=project(pos,routeCoords[i],routeCoords[i+1]);
     const segmentHeading=bearingBetween(routeCoords[i],routeCoords[i+1]);
-    const headingPenalty=currentSpeed>8?Math.abs(headingDelta(currentHeading,segmentHeading))*0.35:0;
-    const backwardPenalty=i<routeIndex?Math.min(80,(routeIndex-i)*2):0;
-    const score=m.distance+headingPenalty+backwardPenalty;
-    if(score<best.score)best={index:i,point:m.point,distance:m.distance,score};
+    const headingError=Math.abs(headingDelta(currentHeading,segmentHeading));
+    const headingPenalty=currentSpeed>10?Math.min(120,headingError*.55):0;
+    const backwardPenalty=i<routeIndex?Math.min(140,(routeIndex-i)*5):0;
+    const forwardPenalty=i>routeIndex+90?(i-routeIndex-90)*2:0;
+    const score=m.distance+headingPenalty+backwardPenalty+forwardPenalty;
+    if(score<best.score)best={index:i,point:m.point,distance:m.distance,heading:segmentHeading,score};
   }
-  if(best.distance<130)routeIndex=Math.max(routeIndex-2,best.index);
+  if(commit&&best.distance<75){
+    routeIndex=Math.max(routeIndex,Math.max(0,best.index-1));
+    lastRouteMatch=best;
+  }
   return best;
 }
 function remainingMeters(pos){
-  const m=matchRoute(pos);let total=dist(m.point,routeCoords[m.index+1]||m.point);
-  for(let i=m.index+1;i<routeCoords.length-1;i++)total+=dist(routeCoords[i],routeCoords[i+1]);return total;
+  const m=lastRouteMatch||matchRoute(pos,false);
+  if(!m||!routeCoords[m.index+1])return 0;
+  let total=dist(m.point,routeCoords[m.index+1]);
+  for(let i=m.index+1;i<routeCoords.length-1;i++)total+=dist(routeCoords[i],routeCoords[i+1]);
+  return total;
 }
 function forwardPoint(pos,bearing,meters){
   const R=6378137,b=bearing*Math.PI/180,lat1=pos[1]*Math.PI/180,lon1=pos[0]*Math.PI/180,d=meters/R;
@@ -579,48 +589,40 @@ function startMotionLoop(){
 
     if(gpsTarget){
       const age=Math.max(0,(Date.now()-lastGpsUpdate)/1000);
-      const speedMps=Math.max(0,currentSpeed/2.236936);
-      const accuracyPenalty=clamp((gpsAccuracy-40)/180,0,.55);
-      const predictionSeconds=clamp(1.25-accuracyPenalty,0.55,1.35);
-      const predictionMeters=Math.min(52,speedMps*Math.min(age,predictionSeconds));
+      const predictionWindow=clamp(0.75-(gpsAccuracy/500),.25,.75);
+      const predictionMeters=Math.min(24,gpsVelocityMps*Math.min(age,predictionWindow));
+      const course=Number.isFinite(matchedHeading)?matchedHeading:targetHeading;
+      predictedTarget=predictionMeters>0.5?forwardPoint(gpsTarget,course,predictionMeters):gpsTarget;
 
-      predictedTarget=predictionMeters>0.8
-        ?forwardPoint(gpsTarget,targetHeading,predictionMeters)
-        :gpsTarget;
-
-      if(routeCoords.length&&driving){
-        const pm=matchRoute(predictedTarget);
-        const snapThreshold=clamp((gpsAccuracy/3.28084)*1.35,55,125);
-        if(pm.distance<snapThreshold)predictedTarget=pm.point;
-      }
-
+      // Visual smoothing only. Route selection happens when a real GPS sample arrives.
       if(!visualPosition)visualPosition=[...predictedTarget];
       const gap=dist(visualPosition,predictedTarget);
-      const positionRate=gap>45?18:gap>18?13:9;
-      visualPosition=interpolateLngLat(
-        visualPosition,predictedTarget,1-Math.exp(-positionRate*dt)
-      );
+      const catchup=gap>35?10:gap>12?7:4.8;
+      visualPosition=interpolateLngLat(visualPosition,predictedTarget,1-Math.exp(-catchup*dt));
 
-      const headingRate=currentSpeed>18?12:7;
-      visualHeading=normalizeHeading(
-        visualHeading+headingDelta(visualHeading,targetHeading)*(1-Math.exp(-headingRate*dt))
-      );
+      const desiredHeading=currentSpeed>4?(matchedHeading||targetHeading):visualHeading;
+      const headingRate=currentSpeed>25?7.5:5;
+      visualHeading=normalizeHeading(visualHeading+headingDelta(visualHeading,desiredHeading)*(1-Math.exp(-headingRate*dt)));
 
-      if(now-lastMarkerAt>=15){
+      if(now-lastMarkerAt>=16){
         setDriver(visualPosition,visualHeading);
         lastMarkerAt=now;
       }
 
-      // Camera updates at 30 fps, reducing main-thread churn while remaining visually fluid.
       if(driving&&followMode&&now-lastCameraAt>=33){
-        const lookAhead=clamp(135+currentSpeed*5.8,150,470);
-        const cameraTarget=forwardPoint(visualPosition,visualHeading,lookAhead);
-        ignoreMapInteractionUntil=Date.now()+90;
+        if(!cameraPosition)cameraPosition=[...visualPosition];
+        const cameraGap=dist(cameraPosition,visualPosition);
+        const cameraRate=cameraGap>45?7:3.8;
+        cameraPosition=interpolateLngLat(cameraPosition,visualPosition,1-Math.exp(-cameraRate*dt*2));
+        cameraHeading=normalizeHeading(cameraHeading+headingDelta(cameraHeading,visualHeading)*(1-Math.exp(-3.4*dt*2)));
+        const lookAhead=clamp(65+currentSpeed*2.7,75,235);
+        const center=forwardPoint(cameraPosition,cameraHeading,lookAhead);
+        ignoreMapInteractionUntil=Date.now()+80;
         map.jumpTo({
-          center:cameraTarget,
-          zoom:currentSpeed>45?16.65:17.15,
-          pitch:60,
-          bearing:visualHeading
+          center,
+          zoom:currentSpeed>55?16.25:currentSpeed>30?16.65:17.05,
+          pitch:58,
+          bearing:cameraHeading
         });
         lastCameraAt=now;
       }
@@ -649,9 +651,9 @@ function nextStep(pos){
 }
 function updateTurn(pos){
   const s=nextStep(pos);if(!s)return;
-  const loc=s.maneuver.location;let meters=0,m=matchRoute(pos),mi=m.index,best=Infinity;
+  const loc=s.maneuver.location;let meters=0,m=lastRouteMatch||matchRoute(pos,false),mi=m.index,best=Infinity;
   for(let i=mi;i<routeCoords.length;i++){const d=dist(routeCoords[i],loc);if(d<best){best=d;mi=i}}
-  const cur=matchRoute(pos);meters+=dist(cur.point,routeCoords[cur.index+1]||cur.point);
+  const cur=lastRouteMatch||matchRoute(pos,false);meters+=dist(cur.point,routeCoords[cur.index+1]||cur.point);
   for(let i=cur.index+1;i<mi;i++)meters+=dist(routeCoords[i],routeCoords[i+1]);meters+=dist(routeCoords[mi],loc);
   const ft=meters*3.28084;$('turnDistance').textContent=meters<304.8?`${Math.max(20,Math.round(ft/10)*10)} ft`:`${(meters/1609.344).toFixed(meters<1609.344?1:0)} mi`;
   const type=s.maneuver.type,mod=s.maneuver.modifier;let verb='Continue',arrow='↑';
@@ -768,59 +770,67 @@ function tick(){
 function onPosition(p){
   const raw=[p.coords.longitude,p.coords.latitude];
   const now=Date.now();
-  const accuracyMeters=p.coords.accuracy||999;
+  const accuracyMeters=Number.isFinite(p.coords.accuracy)?p.coords.accuracy:999;
   gpsAccuracy=accuracyMeters*3.28084;
 
-  // Reject impossible GPS jumps while retaining recovery from genuinely poor signals.
   if(lastAcceptedRaw&&lastAcceptedAt){
-    const seconds=Math.max(.2,(now-lastAcceptedAt)/1000);
+    const seconds=Math.max(.25,(now-lastAcceptedAt)/1000);
     const jump=dist(lastAcceptedRaw,raw);
-    const plausible=Math.max(accuracyMeters*2.5,(currentSpeed/2.236936)*seconds*3+80);
-    if(jump>plausible&&accuracyMeters>35){
-      updateHealth();
-      return;
-    }
+    const reportedMps=Number.isFinite(p.coords.speed)?Math.max(0,p.coords.speed):gpsVelocityMps;
+    const plausible=Math.max(45,accuracyMeters*2.1,reportedMps*seconds*2.2+30);
+    if(jump>plausible&&accuracyMeters>22){updateHealth();return;}
   }
 
-  const measuredSpeed=Number.isFinite(p.coords.speed)?Math.max(0,p.coords.speed*2.236936):currentSpeed;
+  let measuredMps=Number.isFinite(p.coords.speed)?Math.max(0,p.coords.speed):0;
   let measuredHeading=Number.isFinite(p.coords.heading)?normalizeHeading(p.coords.heading):null;
-
-  if(measuredHeading===null&&lastAcceptedRaw&&dist(lastAcceptedRaw,raw)>5){
-    measuredHeading=bearingBetween(lastAcceptedRaw,raw);
+  if(lastAcceptedRaw&&lastAcceptedAt){
+    const seconds=Math.max(.25,(now-lastAcceptedAt)/1000);
+    const moved=dist(lastAcceptedRaw,raw);
+    if(!Number.isFinite(p.coords.speed)&&moved>2)measuredMps=moved/seconds;
+    if(measuredHeading===null&&moved>3)measuredHeading=bearingBetween(lastAcceptedRaw,raw);
   }
 
-  currentSpeed=currentSpeed*.35+measuredSpeed*.65;
-  if(measuredHeading!==null){
-    currentHeading=normalizeHeading(currentHeading+headingDelta(currentHeading,measuredHeading)*.72);
+  gpsVelocityMps=gpsVelocityMps*.55+measuredMps*.45;
+  currentSpeed=gpsVelocityMps*2.236936;
+  if(measuredHeading!==null&&currentSpeed>2){
+    gpsCourse=normalizeHeading(gpsCourse+headingDelta(gpsCourse,measuredHeading)*.5);
+    currentHeading=gpsCourse;
   }
 
-  lastAcceptedRaw=[...raw];lastAcceptedAt=now;
-  $('speedNow').textContent=Math.round(currentSpeed);
+  lastAcceptedRaw=[...raw];lastAcceptedAt=now;lastGpsUpdate=now;
 
   if(driving&&routeCoords.length){
-    const matched=matchRoute(raw);
-    const snapThreshold=clamp(accuracyMeters*1.5,55,130);
-    const snapped=matched.distance<snapThreshold;
-    currentPosition=snapped?matched.point:raw;
-    gpsTarget=[...currentPosition];targetHeading=currentHeading;
+    const match=matchRoute(raw,true);
+    // Tight, accuracy-aware snap. Never use a 100+ meter magnetic pull.
+    const snapThreshold=clamp(accuracyMeters*1.15,16,48);
+    const headingOkay=currentSpeed<8||Math.abs(headingDelta(currentHeading,match.heading))<75;
+    const snapped=match.distance<=snapThreshold&&headingOkay;
 
-    if(!snapped&&matched.distance>180)routeDeviationCount++;
+    matchedPosition=snapped?match.point:raw;
+    matchedHeading=snapped?match.heading:currentHeading;
+    currentPosition=[...matchedPosition];
+    gpsTarget=[...matchedPosition];
+    targetHeading=matchedHeading;
+
+    if(!snapped&&match.distance>95)routeDeviationCount++;
     else routeDeviationCount=Math.max(0,routeDeviationCount-1);
-
-    if(routeDeviationCount>=3&&!rerouteBusy){
-      rerouteFromCurrent();
-    }
+    if(routeDeviationCount>=4&&!rerouteBusy)rerouteFromCurrent();
 
     const remaining=remainingMeters(currentPosition)/1609.344;
-    trip.distance=remaining;
+    trip.distance=Math.max(0,remaining);
     const routePace=trip.originalDuration/Math.max(trip.originalDistance,.1);
-    trip.duration=remaining*routePace;
-    updateMetrics();updateTurn(currentPosition);saveState();startMotionLoop();
-  }else{
-    currentPosition=raw;gpsTarget=[...raw];targetHeading=currentHeading;startMotionLoop();
-  }
+    trip.duration=trip.distance*routePace;
 
-  lastGpsUpdate=now;updateHealth();
+    if(now-lastUiAt>400){
+      $('speedNow').textContent=Math.round(currentSpeed);
+      updateMetrics();updateTurn(currentPosition);updateHealth();saveState();
+      lastUiAt=now;
+    }
+    startMotionLoop();
+  }else{
+    currentPosition=raw;gpsTarget=[...raw];targetHeading=currentHeading;
+    $('speedNow').textContent=Math.round(currentSpeed);updateHealth();startMotionLoop();
+  }
 }
 async function rerouteFromCurrent(){
   if(rerouteBusy||!currentPosition||!lastDestinationPoint)return;
@@ -847,6 +857,8 @@ function start(){
   userInteracting=false;
   ignoreMapInteractionUntil=Date.now()+1200;
   visualPosition=currentPosition?[...currentPosition]:visualPosition;
+  cameraPosition=currentPosition?[...currentPosition]:cameraPosition;
+  cameraHeading=currentHeading||cameraHeading;
   gpsTarget=currentPosition?[...currentPosition]:gpsTarget;
   visualHeading=currentHeading||visualHeading;
   targetHeading=currentHeading||targetHeading;
@@ -967,6 +979,7 @@ $('recenter').onclick=()=>{
   ignoreMapInteractionUntil=Date.now()+900;
   $('resume').classList.remove('visible');
   if(currentPosition){
+    cameraPosition=[...currentPosition];cameraHeading=currentHeading;
     map.easeTo({
       center:currentPosition,
       zoom:driving?17:14,

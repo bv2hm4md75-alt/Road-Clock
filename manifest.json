@@ -1,5 +1,5 @@
 {
-  "name": "Road Clock Beta 1",
+  "name": "Road Clock Beta 2 RC1",
   "short_name": "Road Clock",
   "start_url": "./",
   "scope": "./",
@@ -7,5 +7,5 @@
   "orientation": "portrait",
   "background_color": "#07110b",
   "theme_color": "#07110b",
-  "description": "Navigation-first Hours of Service planning for professional drivers"
+  "description": "Private navigation performance release candidate"
 }
