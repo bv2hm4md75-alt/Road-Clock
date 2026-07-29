@@ -1,22 +1,16 @@
-# Road Clock Alpha 2
+# Road Clock Alpha 3
 
-This Netlify-ready build adds the navigation-first map interface designed for Road Clock.
+## New
+- Full-screen map
+- Overview before Start Route
+- Close, forward-looking follow mode after Start Route
+- Draggable bottom sheet with three positions
+- Speed and speed limit on the right
+- Live GPS marker, heading, speed, ETA and remaining-distance updates
+- Screen wake lock request during navigation
 
-## Added
-- Black-and-green active navigation screen
-- Static green legal-range boundary
-- Range contraction when delay is added
-- Collapsible Drive, Duty and Cycle panel
-- Live OpenStreetMap search and OSRM route drawing
-- GPS origin on HTTPS
-- ETA, distance, drive time and suggested-stop cards
+## GitHub upload
+Upload the individual files inside this ZIP to the top level of your repository. Do not upload the ZIP itself.
 
-## Upload from iPhone
-1. Save `road-clock-alpha-2-netlify.zip` to the Files app.
-2. In Safari, sign into Netlify and open Netlify Drop or a manual deploy.
-3. Select the ZIP.
-4. Open the generated HTTPS address.
-5. In Safari, tap Share, then Add to Home Screen.
-
-## Alpha limitations
-This is not an ELD, legal advice, or approved commercial navigation. The green range is an early circular estimate based on entered clocks, speed, buffer and known delay. Public routing does not verify bridge clearance, weight, coach restrictions, weather, closures or company rules.
+## Limits
+This is an alpha web app, not an ELD or commercial routing system. iOS can suspend GPS when the app is backgrounded or the phone locks. Speed-limit data remains `--` until a reliable provider is connected.

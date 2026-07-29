@@ -1,1 +1,9 @@
-{"name":"Road Clock Alpha 2","short_name":"Road Clock","start_url":"./","display":"standalone","background_color":"#050806","theme_color":"#050806","description":"Navigation-first HOS planning alpha for professional drivers."}
+{
+  "name": "Road Clock Alpha 3",
+  "short_name": "Road Clock",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#030704",
+  "theme_color": "#030704"
+}
