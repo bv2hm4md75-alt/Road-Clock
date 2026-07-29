@@ -1,10 +1,11 @@
 {
-  "name": "Road Clock Alpha 10.5",
+  "name": "Road Clock Beta 1",
   "short_name": "Road Clock",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#07110b",
-  "theme_color": "#07110b"
+  "theme_color": "#07110b",
+  "description": "Navigation-first Hours of Service planning for professional drivers"
 }

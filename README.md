@@ -1,24 +1,52 @@
-# Road Clock Alpha 10.5
+# Road Clock Beta 1
 
-## Arrow and camera tracking
+Road Clock Beta 1 is a major performance and reliability overhaul for private driver testing.
 
-- Adds short-range dead-reckoning prediction between GPS updates
-- Predicts forward motion from live speed and heading
-- Snaps predicted position back to the route when appropriate
-- Uses faster catch-up interpolation to reduce arrow lag
-- Smooths heading without making the arrow trail far behind
-- Camera follows the predicted, smoothed position
-- Geolocation requests now use zero cached age
+## Major changes
 
-## AI Co-Driver stability
+### Navigation smoothness
+- 60 FPS visual vehicle updates
+- Camera rendering capped at 30 FPS to reduce main-thread load
+- Accuracy-aware short-range position prediction
+- GPS outlier rejection
+- Heading derived from movement when the phone does not provide it
+- Heading-aware route snapping
+- Automatic rerouting after repeated route deviation
+- Dynamic camera look-ahead and zoom
 
-- AI opens as a compact voice overlay instead of a full-screen panel
-- Speech recognition is created only when the microphone is tapped
-- Each question uses a fresh recognition session
-- Eight-second timeout prevents frozen microphone sessions
-- Spoken answers remain enabled
-- Typed AI remains available as a fallback
+### Reliability
+- Saved route and HOS state restore after accidental app closure
+- Network timeouts and backup routing/geocoding services
+- Wake-lock support during active navigation
+- Global error recovery messages
+- Route calculation status
+- GPS quality and system health indicator
+- Network-first service worker with offline app-shell fallback
 
-## Upload
+### Stops and HOS
+- TomTom commercial stop search when a key is available
+- OpenStreetMap/Overpass route-aligned fallback
+- Unverified parking is clearly labeled
+- HOS elapsed time is calculated from real timestamps
+- Low-drive-time warning
+- Destination-local ETA
 
-Replace the five repository files with the files inside this ZIP.
+### AI Co-Driver
+- Voice, typed, and one-tap commands
+- ETA, clocks, shutdown, legal reach, next turn, speed, and GPS quality
+- Fresh speech-recognition session per request
+- Spoken answers where supported
+
+### Jesse demo mode
+1. Calculate any route.
+2. Tap **RUN JESSE DEMO DRIVE**.
+3. Road Clock simulates highway movement.
+4. Tap again to stop.
+
+## Important testing note
+
+This is a private beta release candidate, not a certified ELD or commercial truck-routing system. Drivers must independently verify HOS compliance, vehicle restrictions, parking availability, and navigation instructions.
+
+## Deployment
+
+Upload the five core files in this ZIP to the GitHub repository once. Netlify should publish automatically.

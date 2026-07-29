@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="./manifest.json">
 <link href="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.css" rel="stylesheet">
-<title>Road Clock Alpha 10.5</title>
+<title>Road Clock Beta 1</title>
 <style>
 :root{
   --green:#55f17b;--amber:#ffc857;--blue:#59a7ff;--red:#ff6f7d;
@@ -106,12 +106,43 @@ label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{wi
   background:var(--control);color:var(--text)
 }
 
+
+.routeProgress{display:none;margin-top:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--control);color:var(--muted);font-size:11px}
+.routeProgress.visible{display:block}
+.quickCommands{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;width:100%}
+.quickCommands button,.typedFallback{border:1px solid var(--line);border-radius:13px;padding:11px 9px;background:var(--control);color:var(--text);font-size:11px;font-weight:800}
+.typedFallback{width:100%;margin-top:8px}
+
+.betaTag{margin-left:5px;color:var(--muted);font-size:8px;letter-spacing:.12em}
+.toast{
+  position:fixed;z-index:100;left:50%;top:calc(16px + env(safe-area-inset-top));
+  transform:translate(-50%,-18px);opacity:0;pointer-events:none;
+  max-width:calc(100vw - 28px);padding:11px 14px;border-radius:14px;
+  border:1px solid var(--line);background:var(--panel);color:var(--text);
+  font-size:12px;font-weight:800;box-shadow:0 12px 32px #0007;
+  transition:opacity .18s,transform .18s
+}
+.toast.visible{opacity:1;transform:translate(-50%,0)}
+.betaStatus{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  margin-top:12px;padding:11px 12px;border:1px solid var(--line);
+  border-radius:14px;background:var(--control);font-size:11px
+}
+.betaStatus strong{color:var(--green)}
+.demoButton{
+  width:100%;margin-top:10px;border:1px solid var(--line);border-radius:14px;
+  padding:13px;background:var(--control);color:var(--text);font-weight:900
+}
+.healthDot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:7px}
+.healthDot.warn{background:var(--amber)}.healthDot.bad{background:var(--red)}
+.driverPulse{width:44px;height:44px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.4));will-change:transform}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}.sheet,.toast{transition:none!important}}
 </style>
 </head>
 <body>
 <div id="app">
-<div id="map"></div>
-<div id="brand" class="brand"><div class="logo">RC</div><b>ROAD <span>CLOCK</span></b></div>
+<div id="map"></div><div id="toast" class="toast" role="status"></div>
+<div id="brand" class="brand"><div class="logo">RC</div><b>ROAD <span>CLOCK</span><small class="betaTag">BETA 1</small></b></div>
 <div id="turn" class="turn"><div id="turnArrow" class="arrow">↑</div><div class="turnText"><strong id="turnDistance">Continue</strong><span id="turnInstruction">Follow route</span></div><div id="turnShield" class="shield">--</div></div>
 <div id="right" class="right">
   <div class="limit">SPEED LIMIT<strong id="speedLimit">--</strong></div>
@@ -152,7 +183,7 @@ label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{wi
       <div><label>Cycle remaining</label><input id="cycleHours" type="number" step=".25" value="70"></div>
       <div><label>Safety reserve</label><input id="buffer" type="number" step=".25" value=".5"></div>
     </div>
-    <button id="calculate" class="primary">CALCULATE ROUTE</button><p id="plannerMessage" class="note">Starts from your current GPS position.</p>
+    <button id="calculate" class="primary">CALCULATE ROUTE</button><button id="demoDrive" class="demoButton">RUN JESSE DEMO DRIVE</button><div class="betaStatus"><span><i id="healthDot" class="healthDot"></i><strong id="healthLabel">SYSTEM READY</strong></span><span id="gpsQuality">GPS --</span></div><div id="routeProgress" class="routeProgress">Preparing route…</div><p id="plannerMessage" class="note">Starts from your current GPS position.</p>
   </div>
 </section>
 
@@ -170,10 +201,17 @@ label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{wi
   <div id="voiceStatus" class="voiceStatus">Tap once, speak naturally, and Road Clock will answer aloud.</div>
 </section>
 
-<section id="voiceOverlay" class="voiceOverlay" aria-live="polite">
+<section id="voiceOverlay" class="voiceOverlay" aria-live="polite" style="align-items:flex-start;flex-wrap:wrap">
   <button id="voiceOrb" class="voiceOrb">🎙</button>
-  <div class="voiceCopy"><b id="voiceTitle">AI Co-Driver</b><span id="voiceOverlayStatus">Tap the microphone and speak</span></div>
+  <div class="voiceCopy"><b id="voiceTitle">AI Co-Driver</b><span id="voiceOverlayStatus">Tap the microphone or choose a command</span></div>
   <button id="voiceOverlayClose" class="voiceClose">✕</button>
+  <div class="quickCommands">
+    <button data-command="eta">What’s my ETA?</button>
+    <button data-command="clocks">Read my clocks</button>
+    <button data-command="stop">Best shutdown</button>
+    <button data-command="legal">Can I make it?</button>
+  </div>
+  <button id="openTypedAI" class="typedFallback">TYPE A QUESTION</button>
 </section>
 
 </div>
@@ -194,7 +232,66 @@ let speechRecognition=null,voiceListening=false;
 let lastRawGps=null,lastRawGpsTime=0,predictedTarget=null;
 let lastSpokenAnswer='';
 let driverMarker=null,destinationMarker=null,shutdownMarker=null;
+let lastAcceptedRaw=null,lastAcceptedAt=0,lastCameraAt=0,lastMarkerAt=0;
+let gpsAccuracy=Infinity,routeDeviationCount=0,rerouteBusy=false;
+let demoTimer=null,demoIndex=0,demoProgress=0,lastPersistAt=0;
+let lastDestinationQuery='',lastDestinationPoint=null;
 const fallback=[-98.5795,39.8283];
+const RC_STATE_KEY='roadClockBetaStateV1';
+
+
+function toast(message,duration=2600){
+  const el=$('toast');el.textContent=message;el.classList.add('visible');
+  clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('visible'),duration);
+}
+function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+function saveState(force=false){
+  const now=Date.now();
+  if(!force&&now-lastPersistAt<5000)return;
+  lastPersistAt=now;
+  try{
+    localStorage.setItem(RC_STATE_KEY,JSON.stringify({
+      trip,routeCoords,routeSteps,routeReady,routeIndex,stepIndex,
+      destinationName:$('destinationName')?.textContent||'',
+      destinationQuery:lastDestinationQuery,
+      destinationPoint:lastDestinationPoint,
+      destinationTimeZone,
+      drivePaused,
+      savedAt:now
+    }));
+  }catch(e){}
+}
+function restoreState(){
+  try{
+    const state=JSON.parse(localStorage.getItem(RC_STATE_KEY)||'null');
+    if(!state||Date.now()-state.savedAt>24*3600000)return;
+    if(state.trip)trip={...trip,...state.trip};
+    if(Array.isArray(state.routeCoords)&&state.routeCoords.length>1){
+      routeCoords=state.routeCoords;routeSteps=state.routeSteps||[];
+      routeReady=!!state.routeReady;routeIndex=state.routeIndex||0;stepIndex=state.stepIndex||0;
+      lastDestinationQuery=state.destinationQuery||'';
+      lastDestinationPoint=state.destinationPoint||null;
+      destinationTimeZone=state.destinationTimeZone||null;
+      drivePaused=!!state.drivePaused;
+      $('sheet').classList.add('hasRoute');
+      $('destinationName').textContent=state.destinationName||lastDestinationQuery||'Saved route';
+      updateMetrics();updateClocks();
+      pendingRouteDraw={coords:routeCoords,end:lastDestinationPoint||routeCoords.at(-1)};
+      toast('Saved route restored');
+    }
+  }catch(e){}
+}
+function updateHealth(){
+  const dot=$('healthDot'),label=$('healthLabel'),quality=$('gpsQuality');
+  if(!dot||!label||!quality)return;
+  if(!currentPosition){
+    dot.className='healthDot warn';label.textContent='WAITING FOR GPS';quality.textContent='GPS --';return;
+  }
+  quality.textContent=`GPS ${Number.isFinite(gpsAccuracy)?Math.round(gpsAccuracy):'--'} ft`;
+  if(gpsAccuracy<=65){dot.className='healthDot';label.textContent='SYSTEM READY'}
+  else if(gpsAccuracy<=160){dot.className='healthDot warn';label.textContent='GPS FAIR'}
+  else{dot.className='healthDot bad';label.textContent='GPS WEAK'}
+}
 
 function fmtClock(h){const m=Math.max(0,Math.round(h*60));return `${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}`}
 function fmtHours(h){const m=Math.max(0,Math.round(h*60));return `${Math.floor(m/60)}h ${String(m%60).padStart(2,'0')}m`}
@@ -276,36 +373,88 @@ function initMap(){
   map.on('pitchstart',pauseFollowFromUser);
 }
 function locate(){
-  if(!navigator.geolocation){$('status').textContent='LOCATION UNAVAILABLE';return}
+  if(!navigator.geolocation){
+    $('status').textContent='LOCATION UNAVAILABLE';toast('This browser does not support location');return;
+  }
+  $('status').textContent='LOCATING…';
   navigator.geolocation.getCurrentPosition(p=>{
     currentPosition=[p.coords.longitude,p.coords.latitude];
+    gpsAccuracy=(p.coords.accuracy||999)*3.28084;
     currentHeading=Number.isFinite(p.coords.heading)?normalizeHeading(p.coords.heading):0;
-    gpsTarget=[...currentPosition];
-    visualPosition=[...currentPosition];
-    targetHeading=currentHeading;
-    visualHeading=currentHeading;
+    currentSpeed=Number.isFinite(p.coords.speed)?Math.max(0,p.coords.speed*2.236936):0;
+    gpsTarget=[...currentPosition];visualPosition=[...currentPosition];
+    targetHeading=currentHeading;visualHeading=currentHeading;
+    lastGpsUpdate=Date.now();lastAcceptedRaw=[...currentPosition];lastAcceptedAt=Date.now();
     setDriver(currentPosition,currentHeading);
     map.jumpTo({center:currentPosition,zoom:14});
-    $('status').textContent='CURRENT LOCATION';
-    startMotionLoop();
-  },()=>{$('status').textContent='LOCATION NEEDED'}, {enableHighAccuracy:true,timeout:12000,maximumAge:20000});
+    $('status').textContent='CURRENT LOCATION';updateHealth();startMotionLoop();
+  },err=>{
+    $('status').textContent='LOCATION NEEDED';
+    updateHealth();
+    toast(err.code===1?'Enable Precise Location for Road Clock':'Could not get GPS location',4200);
+  },{enableHighAccuracy:true,timeout:15000,maximumAge:0});
 }
 function driverElement(){
-  const e=document.createElement('div');e.style.width='42px';e.style.height='42px';e.innerHTML='<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="22" fill="rgba(47,130,255,.32)"/><path d="M24 7 L35 37 L24 31 L13 37 Z" fill="#fff" stroke="#2f82ff" stroke-width="2"/></svg>';return e;
+  const e=document.createElement('div');
+  e.className='driverPulse';
+  e.innerHTML='<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21" fill="rgba(47,130,255,.28)"/><circle cx="24" cy="24" r="14" fill="rgba(47,130,255,.18)"/><path d="M24 5 L36 39 L24 32 L12 39 Z" fill="#fff" stroke="#2f82ff" stroke-width="2.4" stroke-linejoin="round"/></svg>';
+  return e;
 }
 function setDriver(pos,heading){
-  if(!driverMarker)driverMarker=new maplibregl.Marker({element:driverElement(),rotationAlignment:'map'}).setLngLat(pos).addTo(map);
+  if(!map||!pos)return;
+  if(!driverMarker){
+    driverMarker=new maplibregl.Marker({
+      element:driverElement(),
+      rotationAlignment:'map',
+      pitchAlignment:'map'
+    }).setLngLat(pos).addTo(map);
+  }
   driverMarker.setLngLat(pos).setRotation(heading||0);
 }
+
+async function fetchWithTimeout(url,options={},timeoutMs=12000){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),timeoutMs);
+  try{return await fetch(url,{...options,signal:controller.signal})}
+  finally{clearTimeout(timer)}
+}
+function setRouteProgress(text,visible=true){
+  $('routeProgress').textContent=text;
+  $('routeProgress').classList.toggle('visible',visible);
+}
+
 async function geocode(q){
-  const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`);const d=await r.json();
-  if(!d[0])throw new Error('Destination not found');return[+d[0].lon,+d[0].lat];
+  const endpoints=[
+    `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`,
+    `https://photon.komoot.io/api/?limit=1&q=${encodeURIComponent(q)}`
+  ];
+  for(let i=0;i<endpoints.length;i++){
+    try{
+      const r=await fetchWithTimeout(endpoints[i],{headers:{Accept:'application/json'}},10000);
+      if(!r.ok)continue;
+      const d=await r.json();
+      if(i===0&&d?.[0])return[+d[0].lon,+d[0].lat];
+      if(i===1&&d?.features?.[0])return d.features[0].geometry.coordinates;
+    }catch(e){}
+  }
+  throw new Error('Destination search timed out. Check the destination and try again.');
 }
 async function routeBetween(a,b){
-  const u=`https://router.project-osrm.org/route/v1/driving/${a[0]},${a[1]};${b[0]},${b[1]}?overview=full&geometries=geojson&steps=true`;
-  const r=await fetch(u);const d=await r.json();if(!d.routes?.[0])throw new Error('No route returned');
-  const x=d.routes[0],leg=x.legs[0];
-  return{coords:x.geometry.coordinates,miles:x.distance/1609.344,hours:x.duration/3600,steps:leg.steps||[]};
+  const endpoints=[
+    `https://router.project-osrm.org/route/v1/driving/${a[0]},${a[1]};${b[0]},${b[1]}?overview=full&geometries=geojson&steps=true`,
+    `https://routing.openstreetmap.de/routed-car/route/v1/driving/${a[0]},${a[1]};${b[0]},${b[1]}?overview=full&geometries=geojson&steps=true`
+  ];
+  for(const url of endpoints){
+    try{
+      const r=await fetchWithTimeout(url,{},16000);
+      if(!r.ok)continue;
+      const d=await r.json();
+      if(!d.routes?.[0])continue;
+      const x=d.routes[0],leg=x.legs?.[0];
+      return{coords:x.geometry.coordinates,miles:x.distance/1609.344,hours:x.duration/3600,steps:leg?.steps||[]};
+    }catch(e){}
+  }
+  throw new Error('Routing service is busy. Try again in a moment.');
 }
 function ensureRouteLayer(coords){
   if(!map||!map.isStyleLoaded())return false;
@@ -374,9 +523,19 @@ function project(p,a,b){
   return{point:[(ax+t*dx)/lonScale,(ay+t*dy)/latScale],distance:Math.hypot(px-(ax+t*dx),py-(ay+t*dy))};
 }
 function matchRoute(pos){
-  let best={index:routeIndex,point:pos,distance:Infinity};const start=Math.max(0,routeIndex-15),end=Math.min(routeCoords.length-1,routeIndex+150);
-  for(let i=start;i<end;i++){const m=project(pos,routeCoords[i],routeCoords[i+1]);if(m.distance<best.distance)best={index:i,point:m.point,distance:m.distance}}
-  if(best.distance<100)routeIndex=Math.max(routeIndex,best.index);return best;
+  if(routeCoords.length<2)return{index:0,point:pos,distance:Infinity};
+  let best={index:routeIndex,point:pos,distance:Infinity,score:Infinity};
+  const start=Math.max(0,routeIndex-25),end=Math.min(routeCoords.length-1,routeIndex+260);
+  for(let i=start;i<end;i++){
+    const m=project(pos,routeCoords[i],routeCoords[i+1]);
+    const segmentHeading=bearingBetween(routeCoords[i],routeCoords[i+1]);
+    const headingPenalty=currentSpeed>8?Math.abs(headingDelta(currentHeading,segmentHeading))*0.35:0;
+    const backwardPenalty=i<routeIndex?Math.min(80,(routeIndex-i)*2):0;
+    const score=m.distance+headingPenalty+backwardPenalty;
+    if(score<best.score)best={index:i,point:m.point,distance:m.distance,score};
+  }
+  if(best.distance<130)routeIndex=Math.max(routeIndex-2,best.index);
+  return best;
 }
 function remainingMeters(pos){
   const m=matchRoute(pos);let total=dist(m.point,routeCoords[m.index+1]||m.point);
@@ -389,6 +548,13 @@ function forwardPoint(pos,bearing,meters){
   return[lon2*180/Math.PI,lat2*180/Math.PI];
 }
 
+function bearingBetween(a,b){
+  const p1=a[1]*Math.PI/180,p2=b[1]*Math.PI/180;
+  const dl=(b[0]-a[0])*Math.PI/180;
+  const y=Math.sin(dl)*Math.cos(p2);
+  const x=Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl);
+  return normalizeHeading(Math.atan2(y,x)*180/Math.PI);
+}
 function normalizeHeading(value){
   let h=value%360;
   if(h<0)h+=360;
@@ -412,56 +578,57 @@ function startMotionLoop(){
     lastMotionFrame=now;
 
     if(gpsTarget){
-      const elapsedSinceGps=Math.max(0,(Date.now()-lastGpsUpdate)/1000);
+      const age=Math.max(0,(Date.now()-lastGpsUpdate)/1000);
       const speedMps=Math.max(0,currentSpeed/2.236936);
+      const accuracyPenalty=clamp((gpsAccuracy-40)/180,0,.55);
+      const predictionSeconds=clamp(1.25-accuracyPenalty,0.55,1.35);
+      const predictionMeters=Math.min(52,speedMps*Math.min(age,predictionSeconds));
 
-      // Predict slightly ahead between GPS fixes. Cap prediction to avoid runaway drift.
-      const predictionMeters=Math.min(70,speedMps*Math.min(elapsedSinceGps,2.2));
-      predictedTarget=predictionMeters>1
+      predictedTarget=predictionMeters>0.8
         ?forwardPoint(gpsTarget,targetHeading,predictionMeters)
         :gpsTarget;
 
       if(routeCoords.length&&driving){
-        const predictedMatch=matchRoute(predictedTarget);
-        if(predictedMatch.distance<90)predictedTarget=predictedMatch.point;
+        const pm=matchRoute(predictedTarget);
+        const snapThreshold=clamp((gpsAccuracy/3.28084)*1.35,55,125);
+        if(pm.distance<snapThreshold)predictedTarget=pm.point;
       }
 
       if(!visualPosition)visualPosition=[...predictedTarget];
-
-      // Fast catch-up with a softer finish, minimizing visible lag.
       const gap=dist(visualPosition,predictedTarget);
-      const positionRate=gap>35?14:gap>12?10:7;
-      const positionFactor=1-Math.exp(-positionRate*dt);
-      visualPosition=interpolateLngLat(visualPosition,predictedTarget,positionFactor);
-
-      const headingRate=currentSpeed>20?9:6;
-      const headingFactor=1-Math.exp(-headingRate*dt);
-      visualHeading=normalizeHeading(
-        visualHeading+headingDelta(visualHeading,targetHeading)*headingFactor
+      const positionRate=gap>45?18:gap>18?13:9;
+      visualPosition=interpolateLngLat(
+        visualPosition,predictedTarget,1-Math.exp(-positionRate*dt)
       );
 
-      setDriver(visualPosition,visualHeading);
+      const headingRate=currentSpeed>18?12:7;
+      visualHeading=normalizeHeading(
+        visualHeading+headingDelta(visualHeading,targetHeading)*(1-Math.exp(-headingRate*dt))
+      );
 
-      if(driving&&followMode){
-        const lookAhead=Math.max(175,Math.min(560,currentSpeed*7.8));
+      if(now-lastMarkerAt>=15){
+        setDriver(visualPosition,visualHeading);
+        lastMarkerAt=now;
+      }
+
+      // Camera updates at 30 fps, reducing main-thread churn while remaining visually fluid.
+      if(driving&&followMode&&now-lastCameraAt>=33){
+        const lookAhead=clamp(135+currentSpeed*5.8,150,470);
         const cameraTarget=forwardPoint(visualPosition,visualHeading,lookAhead);
-        ignoreMapInteractionUntil=Date.now()+100;
+        ignoreMapInteractionUntil=Date.now()+90;
         map.jumpTo({
           center:cameraTarget,
-          zoom:17.35,
-          pitch:62,
+          zoom:currentSpeed>45?16.65:17.15,
+          pitch:60,
           bearing:visualHeading
         });
+        lastCameraAt=now;
       }
     }
 
-    if(driving||gpsTarget){
-      motionFrame=requestAnimationFrame(frame);
-    }else{
-      motionFrame=null;
-    }
+    if(driving||gpsTarget)motionFrame=requestAnimationFrame(frame);
+    else motionFrame=null;
   };
-
   motionFrame=requestAnimationFrame(frame);
 }
 
@@ -499,11 +666,10 @@ async function resolveDestinationTimeZone(point){
   destinationTimeZoneAbbr='';
   try{
     const url=`https://api.open-meteo.com/v1/forecast?latitude=${point[1]}&longitude=${point[0]}&current=temperature_2m&timezone=auto`;
-    const r=await fetch(url);
+    const r=await fetchWithTimeout(url,{},6000);
     if(!r.ok)return;
     const d=await r.json();
     destinationTimeZone=d.timezone||null;
-    destinationTimeZoneAbbr=d.timezone_abbreviation||'';
   }catch(e){}
 }
 function formatDestinationETA(hoursFromNow){
@@ -532,6 +698,30 @@ async function findTomTomStop(point,targetMiles){
   }
   return best;
 }
+async function findOSMStops(point,targetMiles){
+  const query=`[out:json][timeout:12];(nwr["amenity"="fuel"]["hgv"="yes"](around:55000,${point[1]},${point[0]});nwr["amenity"="parking"]["hgv"="yes"](around:55000,${point[1]},${point[0]});nwr["highway"="services"](around:55000,${point[1]},${point[0]}););out center tags;`;
+  const endpoints=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+  for(const endpoint of endpoints){
+    try{
+      const r=await fetchWithTimeout(endpoint,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'data='+encodeURIComponent(query)},14000);
+      if(!r.ok)continue;
+      const d=await r.json();let best=null;
+      for(const x of d.elements||[]){
+        const lat=x.lat??x.center?.lat,lon=x.lon??x.center?.lon;
+        if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;
+        const p=[lon,lat],m=routeDistanceToPoint(p),off=m.off/1609.344,rm=m.route/1609.344;
+        if(off>5.5)continue;
+        const tags=x.tags||{};
+        const name=tags.name||tags.brand||tags.operator||'Truck parking';
+        const verified=tags.hgv==='yes'||x.tags?.highway==='services';
+        const score=Math.abs(rm-targetMiles)*2+off*24+(verified?0:20);
+        if(!best||score<best.score)best={name,point:p,routeMiles:rm,offMiles:off,verified,score};
+      }
+      if(best)return best;
+    }catch(e){}
+  }
+  return null;
+}
 function routeDistanceToPoint(point){
   let best={off:Infinity,index:0,matched:point};
   for(let i=0;i<routeCoords.length-1;i++){const m=project(point,routeCoords[i],routeCoords[i+1]);if(m.distance<best.off)best={off:m.distance,index:i,matched:m.point}}
@@ -541,51 +731,111 @@ function pointAlongRoute(miles){
   let left=miles*1609.344;for(let i=0;i<routeCoords.length-1;i++){const s=dist(routeCoords[i],routeCoords[i+1]);if(s>=left){const f=left/s;return[routeCoords[i][0]+(routeCoords[i+1][0]-routeCoords[i][0])*f,routeCoords[i][1]+(routeCoords[i+1][1]-routeCoords[i][1])*f]}left-=s}return routeCoords.at(-1);
 }
 async function shutdown(){
-  const speed=trip.distance/Math.max(trip.duration,.1),target=Math.min(trip.distance,Math.max(0,(usableHours()-trip.buffer)*speed)),pt=pointAlongRoute(target);
-  $('stopName').textContent='Searching for a named truck stop…';$('stopDetail').textContent=`Near mile ${Math.round(target)} of your route`;
-  const stop=await findTomTomStop(pt,target);
-  if(stop){$('stopName').textContent=stop.name;$('stopDetail').textContent=`${Math.round(stop.routeMiles)} route mi ahead · ${stop.offMiles.toFixed(1)} mi off route`;if(shutdownMarker)shutdownMarker.remove();shutdownMarker=new maplibregl.Marker({color:'#55f17b'}).setLngLat(stop.point).addTo(map)}
-  else{$('stopName').textContent='No commercial truck-stop result';$('stopDetail').textContent='Add a TomTom API key in Settings for dependable named results. OpenStreetMap fallback is intentionally not presented as verified.'}
+  if(!routeCoords.length)return;
+  const averageSpeed=trip.distance/Math.max(trip.duration,.1);
+  const legalHours=Math.max(0,usableHours());
+  const target=Math.min(trip.distance,Math.max(0,legalHours*averageSpeed));
+  const pt=pointAlongRoute(target);
+  $('stopName').textContent='Searching route-aligned truck stops…';
+  $('stopDetail').textContent=`Legal reach near mile ${Math.round(target)}`;
+
+  let stop=null;
+  try{stop=await findTomTomStop(pt,target)}catch(e){}
+  if(!stop)stop=await findOSMStops(pt,target);
+
+  if(stop){
+    $('stopName').textContent=stop.name;
+    $('stopDetail').textContent=`${Math.round(stop.routeMiles)} route mi ahead · ${stop.offMiles.toFixed(1)} mi off route${stop.verified===false?' · verify parking':''}`;
+    if(shutdownMarker)shutdownMarker.remove();
+    shutdownMarker=new maplibregl.Marker({color:'#55f17b'}).setLngLat(stop.point).addTo(map);
+  }else{
+    $('stopName').textContent='No verified stop found';
+    $('stopDetail').textContent='Road Clock could not verify a route-aligned truck stop. Do not rely on an unverified parking location.';
+  }
 }
 function tick(){
-  if(!driving)return;const now=Date.now();if(!lastTick){lastTick=now;return}const d=Math.min((now-lastTick)/3600000,.01);lastTick=now;
-  trip.duty=Math.max(0,trip.duty-d);trip.cycle=Math.max(0,trip.cycle-d);if(!drivePaused&&currentSpeed>3)trip.drive=Math.max(0,trip.drive-d);updateClocks();
+  if(!driving)return;
+  const now=Date.now();
+  if(!lastTick){lastTick=now;return}
+  const elapsedHours=clamp((now-lastTick)/3600000,0,.05);
+  lastTick=now;
+  trip.duty=Math.max(0,trip.duty-elapsedHours);
+  trip.cycle=Math.max(0,trip.cycle-elapsedHours);
+  if(!drivePaused&&currentSpeed>3)trip.drive=Math.max(0,trip.drive-elapsedHours);
+  updateClocks();saveState();
+  if(trip.drive<=.25&&!tick.warned){tick.warned=true;toast('Drive clock is under 15 minutes',5000)}
 }
 function onPosition(p){
   const raw=[p.coords.longitude,p.coords.latitude];
-  lastRawGps=raw;
-  lastRawGpsTime=Date.now();
+  const now=Date.now();
+  const accuracyMeters=p.coords.accuracy||999;
+  gpsAccuracy=accuracyMeters*3.28084;
 
-  currentHeading=Number.isFinite(p.coords.heading)
-    ?normalizeHeading(p.coords.heading)
-    :currentHeading;
+  // Reject impossible GPS jumps while retaining recovery from genuinely poor signals.
+  if(lastAcceptedRaw&&lastAcceptedAt){
+    const seconds=Math.max(.2,(now-lastAcceptedAt)/1000);
+    const jump=dist(lastAcceptedRaw,raw);
+    const plausible=Math.max(accuracyMeters*2.5,(currentSpeed/2.236936)*seconds*3+80);
+    if(jump>plausible&&accuracyMeters>35){
+      updateHealth();
+      return;
+    }
+  }
 
-  currentSpeed=Number.isFinite(p.coords.speed)
-    ?Math.max(0,p.coords.speed*2.236936)
-    :currentSpeed;
+  const measuredSpeed=Number.isFinite(p.coords.speed)?Math.max(0,p.coords.speed*2.236936):currentSpeed;
+  let measuredHeading=Number.isFinite(p.coords.heading)?normalizeHeading(p.coords.heading):null;
 
+  if(measuredHeading===null&&lastAcceptedRaw&&dist(lastAcceptedRaw,raw)>5){
+    measuredHeading=bearingBetween(lastAcceptedRaw,raw);
+  }
+
+  currentSpeed=currentSpeed*.35+measuredSpeed*.65;
+  if(measuredHeading!==null){
+    currentHeading=normalizeHeading(currentHeading+headingDelta(currentHeading,measuredHeading)*.72);
+  }
+
+  lastAcceptedRaw=[...raw];lastAcceptedAt=now;
   $('speedNow').textContent=Math.round(currentSpeed);
 
   if(driving&&routeCoords.length){
     const matched=matchRoute(raw);
-    currentPosition=matched.distance<120?matched.point:raw;
-    gpsTarget=[...currentPosition];
-    targetHeading=currentHeading;
+    const snapThreshold=clamp(accuracyMeters*1.5,55,130);
+    const snapped=matched.distance<snapThreshold;
+    currentPosition=snapped?matched.point:raw;
+    gpsTarget=[...currentPosition];targetHeading=currentHeading;
+
+    if(!snapped&&matched.distance>180)routeDeviationCount++;
+    else routeDeviationCount=Math.max(0,routeDeviationCount-1);
+
+    if(routeDeviationCount>=3&&!rerouteBusy){
+      rerouteFromCurrent();
+    }
 
     const remaining=remainingMeters(currentPosition)/1609.344;
     trip.distance=remaining;
-    trip.duration=remaining*(trip.originalDuration/Math.max(trip.originalDistance,1));
-    updateMetrics();
-    updateTurn(currentPosition);
-    startMotionLoop();
+    const routePace=trip.originalDuration/Math.max(trip.originalDistance,.1);
+    trip.duration=remaining*routePace;
+    updateMetrics();updateTurn(currentPosition);saveState();startMotionLoop();
   }else{
-    currentPosition=raw;
-    gpsTarget=[...raw];
-    targetHeading=currentHeading;
-    startMotionLoop();
+    currentPosition=raw;gpsTarget=[...raw];targetHeading=currentHeading;startMotionLoop();
   }
 
-  lastGpsUpdate=Date.now();
+  lastGpsUpdate=now;updateHealth();
+}
+async function rerouteFromCurrent(){
+  if(rerouteBusy||!currentPosition||!lastDestinationPoint)return;
+  rerouteBusy=true;routeDeviationCount=0;
+  toast('Recalculating route…',1800);
+  try{
+    const r=await routeBetween(currentPosition,lastDestinationPoint);
+    routeCoords=r.coords;routeSteps=r.steps;routeIndex=0;stepIndex=0;
+    trip.distance=r.miles;trip.duration=r.hours;
+    trip.originalDistance=r.miles;trip.originalDuration=r.hours;
+    ensureRouteLayer(routeCoords);updateMetrics();saveState(true);
+    toast('Route updated');
+  }catch(e){
+    toast('Could not recalculate. Continuing current route.',3200);
+  }finally{rerouteBusy=false}
 }
 function start(){
   driving=true;
@@ -614,6 +864,8 @@ function start(){
     {enableHighAccuracy:true,maximumAge:0,timeout:10000}
   );
   timerId=setInterval(tick,1000);
+  if('wakeLock'in navigator)navigator.wakeLock.request('screen').then(x=>wakeLock=x).catch(()=>{});
+  saveState(true);
   setSheet(0);
 }
 function stop(){
@@ -629,7 +881,10 @@ function stop(){
   $('resume').classList.remove('visible');
   if(watchId!==null)navigator.geolocation.clearWatch(watchId);
   if(timerId)clearInterval(timerId);
+  if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null}
+  if(demoTimer){clearInterval(demoTimer);demoTimer=null}
   if(motionFrame){cancelAnimationFrame(motionFrame);motionFrame=null}
+  saveState(true);
   gpsTarget=currentPosition?[...currentPosition]:null;
   ignoreMapInteractionUntil=Date.now()+700;
   map.easeTo({pitch:0,bearing:0,duration:500});
@@ -639,19 +894,61 @@ let drag=false,sy=0,cy=0;$('handleArea').addEventListener('pointerdown',e=>{drag
 $('planPrimary').onclick=()=>$('planner').classList.add('open');$('closePlanner').onclick=()=>$('planner').classList.remove('open');
 $('calculate').onclick=async()=>{
   if(!mapReady||!map.isStyleLoaded()){
-    $('plannerMessage').textContent='Map is still loading. One moment…';
-    await new Promise(resolve=>{
-      if(map.isStyleLoaded())return resolve();
-      map.once('style.load',resolve);
-    });
+    setRouteProgress('Waiting for map style…');
+    try{
+      await Promise.race([
+        new Promise(resolve=>map.once('style.load',resolve)),
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),8000))
+      ]);
+    }catch(e){
+      $('plannerMessage').textContent='Map is still loading. Close Road Clock, reopen it, and try again.';
+      setRouteProgress('',false);
+      return;
+    }
   }
-  if(!currentPosition){$('plannerMessage').textContent='Waiting for GPS location.';locate();return}const q=$('destination').value.trim();if(!q)return;const b=$('calculate');b.disabled=true;b.textContent='CALCULATING…';try{
-  const end=await geocode(q);
-  await resolveDestinationTimeZone(end);
-  const r=await routeBetween(currentPosition,end);
-  routeSteps=r.steps;
-  trip={drive:+$('driveHours').value,duty:+$('dutyHours').value,cycle:+$('cycleHours').value,buffer:+$('buffer').value,distance:r.miles,duration:r.hours,originalDistance:r.miles,originalDuration:r.hours};
-  drawRoute(r.coords,end);routeReady=true;$('sheet').classList.add('hasRoute');$('destinationName').textContent=q;updateMetrics();updateClocks();shutdown();$('planner').classList.remove('open')}catch(e){$('plannerMessage').textContent=e.message}finally{b.disabled=false;b.textContent='CALCULATE ROUTE'}};
+  if(!currentPosition){
+    setRouteProgress('Getting your GPS position…');
+    locate();
+    $('plannerMessage').textContent='Waiting for GPS location. Make sure Precise Location is enabled.';
+    return;
+  }
+  const q=$('destination').value.trim();
+  if(!q){$('plannerMessage').textContent='Enter a destination.';return}
+  const b=$('calculate');b.disabled=true;b.textContent='CALCULATING…';
+  try{
+    setRouteProgress('Finding destination…');
+    let end;
+    const cacheKey=`rcGeo:${q.toLowerCase()}`;
+    try{end=JSON.parse(localStorage.getItem(cacheKey)||'null')}catch(e){}
+    if(!end){
+      end=await geocode(q);
+      try{localStorage.setItem(cacheKey,JSON.stringify(end))}catch(e){}
+    }
+    lastDestinationQuery=q;lastDestinationPoint=end;
+    resolveDestinationTimeZone(end).then(()=>routeReady&&updateMetrics());
+    setRouteProgress('Building route…');
+    const r=await routeBetween(currentPosition,end);
+    routeSteps=r.steps;
+    trip={drive:+$('driveHours').value,duty:+$('dutyHours').value,cycle:+$('cycleHours').value,buffer:+$('buffer').value,distance:r.miles,duration:r.hours,originalDistance:r.miles,originalDuration:r.hours};
+    setRouteProgress('Drawing route…');
+    drawRoute(r.coords,end);
+    routeReady=true;
+    $('sheet').classList.add('hasRoute');
+    $('destinationName').textContent=q;
+    updateMetrics();
+    updateClocks();
+    setTimeout(()=>shutdown(),350);
+    saveState(true);
+    $('planner').classList.remove('open');
+    toast('Route ready');
+    setRouteProgress('',false);
+  }catch(e){
+    $('plannerMessage').textContent=e.message||'Unable to calculate route.';
+    setRouteProgress('',false);
+  }finally{
+    b.disabled=false;b.textContent='CALCULATE ROUTE';
+  }
+};
 $('startRoute').onclick=start;$('endRoute').onclick=stop;$('pauseDrive').onclick=()=>{drivePaused=!drivePaused;$('pauseDrive').textContent=drivePaused?'RESUME DRIVE CLOCK':'PAUSE DRIVE CLOCK'};
 $('resume').onclick=()=>{
   followMode=true;
@@ -801,14 +1098,101 @@ function setupVoiceAI(){
   };
 }
 
-function ai(text){const q=text.toLowerCase();if(q.includes('stop'))return $('stopName').textContent+'. '+$('stopDetail').textContent;if(q.includes('eta'))return `ETA ${$('eta').textContent}, ${$('distance').textContent} remaining.`;if(q.includes('clock'))return `Drive ${fmtHours(trip.drive)}, Duty ${fmtHours(trip.duty)}, Cycle ${fmtHours(trip.cycle)}.`;return routeReady?`You have ${$('distance').textContent} remaining and an ETA of ${$('eta').textContent}.`:'Plan a route first.'}
+function ai(text){
+  const q=(text||'').toLowerCase().trim();
+  if(!q)return'Say or type a question.';
+  if(q.includes('eta')||q.includes('arrival'))
+    return routeReady?`Your ETA is ${$('eta').textContent}. You have ${$('distance').textContent} remaining.`:'Plan a route first.';
+  if(q.includes('clock')||q.includes('hours'))
+    return `Drive ${fmtHours(trip.drive)}. Duty ${fmtHours(trip.duty)}. Cycle ${fmtHours(trip.cycle)}.`;
+  if(q.includes('stop')||q.includes('shutdown')||q.includes('park'))
+    return routeReady?`${$('stopName').textContent}. ${$('stopDetail').textContent}`:'Plan a route first so I can calculate a shutdown stop.';
+  if(q.includes('legal')||q.includes('make it')||q.includes('reach')){
+    if(!routeReady)return'Plan a route first.';
+    const available=usableHours();
+    return trip.duration<=available
+      ?`Yes, based on the current route and clocks. The trip is ${fmtHours(trip.duration)} and your usable window is ${fmtHours(available)}.`
+      :`No. The trip is ${fmtHours(trip.duration)}, but your usable window is ${fmtHours(available)}. I recommend ${$('stopName').textContent}.`;
+  }
+  if(q.includes('speed'))return`You are traveling about ${Math.round(currentSpeed)} miles per hour.`;
+  if(q.includes('next turn')||q.includes('turn'))
+    return driving?`${$('turnDistance').textContent}. ${$('turnInstruction').textContent}.`:'Start navigation first.';
+  if(q.includes('gps')||q.includes('signal'))
+    return `GPS accuracy is about ${Number.isFinite(gpsAccuracy)?Math.round(gpsAccuracy):'unknown'} feet.`;
+  return routeReady
+    ?`ETA ${$('eta').textContent}. ${$('distance').textContent} remaining. Drive clock ${fmtHours(trip.drive)}.`
+    :'Plan a route first.';
+}
 $('aiSend').onclick=()=>{
   const q=$('aiInput').value.trim();
   if(!q)return;
   answerVoiceQuestion(q);
   $('aiInput').value='';
 };
-initMap();updateClocks();setupVoiceAI();
+
+
+function runDemoDrive(){
+  if(!routeReady||routeCoords.length<2){
+    $('destination').value='Salt Lake City, Utah';
+    $('plannerMessage').textContent='Calculate a route first, then run the demo.';
+    toast('Calculate a route before starting the demo',3200);
+    return;
+  }
+  if(demoTimer){clearInterval(demoTimer);demoTimer=null;toast('Demo stopped');return}
+  if(!driving)start();
+  if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}
+  demoIndex=0;demoProgress=0;
+  $('demoDrive').textContent='STOP DEMO DRIVE';
+  toast('Demo drive started');
+  demoTimer=setInterval(()=>{
+    if(!driving||demoIndex>=routeCoords.length-1){
+      clearInterval(demoTimer);demoTimer=null;$('demoDrive').textContent='RUN JESSE DEMO DRIVE';return;
+    }
+    const a=routeCoords[demoIndex],b=routeCoords[demoIndex+1];
+    const segment=dist(a,b);
+    demoProgress+=Math.max(8,Math.min(30,segment*.25));
+    while(demoProgress>=segment&&demoIndex<routeCoords.length-2){
+      demoProgress-=segment;demoIndex++;
+    }
+    const aa=routeCoords[demoIndex],bb=routeCoords[demoIndex+1];
+    const len=Math.max(1,dist(aa,bb)),f=clamp(demoProgress/len,0,1);
+    const p=[aa[0]+(bb[0]-aa[0])*f,aa[1]+(bb[1]-aa[1])*f];
+    onPosition({coords:{longitude:p[0],latitude:p[1],heading:bearingBetween(aa,bb),speed:26.8,accuracy:6}});
+  },500);
+}
+$('demoDrive').onclick=runDemoDrive;
+
+function runCoDriverCommand(command){
+  const questions={eta:'What is my ETA?',clocks:'Read my clocks',stop:'Where should I stop?',legal:'Can I make it legally?'};
+  const answer=ai(questions[command]||'');
+  $('voiceTitle').textContent='Co-Driver';
+  $('voiceOverlayStatus').textContent=answer;
+  speakCoDriver(answer);
+}
+document.querySelectorAll('[data-command]').forEach(button=>button.addEventListener('click',()=>runCoDriverCommand(button.dataset.command)));
+$('openTypedAI').onclick=()=>{$('voiceOverlay').classList.remove('open');$('aiPanel').classList.add('open')};
+
+
+window.addEventListener('error',e=>{
+  console.error(e.error||e.message);
+  toast('Road Clock recovered from an unexpected error',3200);
+});
+window.addEventListener('unhandledrejection',e=>{
+  console.error(e.reason);
+  toast('A network task failed. Core navigation is still running.',3200);
+});
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)saveState(true);
+  else{
+    lastTick=Date.now();
+    if(driving&&'wakeLock'in navigator)navigator.wakeLock.request('screen').then(x=>wakeLock=x).catch(()=>{});
+    map?.resize();
+  }
+});
+window.addEventListener('beforeunload',()=>saveState(true));
+restoreState();
+
+initMap();updateClocks();updateHealth();setupVoiceAI();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').then(r=>r.update()).catch(()=>{});
 </script>
 </body>
