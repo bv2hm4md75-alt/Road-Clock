@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="./manifest.json">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<title>Road Clock Alpha 7</title>
+<title>Road Clock Alpha 7.1</title>
 <style>
 :root{
   --green:#5af27f;--green2:#178844;--bg:#07110b;--panel:rgba(5,12,7,.97);
@@ -304,7 +304,7 @@ function updateTripMetrics(){
   const driveText=fmtHours(trip.duration);
   $('eta').textContent=etaText;$('distance').textContent=distText;$('driveTime').textContent=driveText;
   $('etaCompact').textContent=etaText;$('distanceCompact').textContent=distText;$('driveTimeCompact').textContent=driveText;
-} mi`}
+}
 $('planPrimary').addEventListener('click',()=>$('planner').classList.add('open'));
 $('plan').addEventListener('click',()=>$('planner').classList.add('open'));$('closePlanner').addEventListener('click',()=>$('planner').classList.remove('open'));
 $('calculate').addEventListener('click',async()=>{if(!currentPosition){$('plannerMessage').textContent='Current location unavailable.';return}const dest=$('destination').value.trim();if(!dest){$('plannerMessage').textContent='Enter a destination.';return}const b=$('calculate');b.disabled=true;b.textContent='Calculating…';try{const end=await geocode(dest),r=await routeBetween(currentPosition,end);trip={drive:+$('driveHours').value,duty:+$('dutyHours').value,cycle:+$('cycleHours').value,speed:+$('planningSpeed').value,buffer:+$('buffer').value,delay:+$('delay').value,distance:r.miles,duration:r.hours};initial={drive:trip.drive,duty:trip.duty,cycle:trip.cycle};steps=r.steps;drawRoute(r.coords,end);routeReady=true;updateTrip(dest);await shutdownSuggestion();$('planner').classList.remove('open');setSheet(0)}catch(e){$('plannerMessage').textContent=e.message+'. Check internet.'}finally{b.disabled=false;b.textContent='Calculate Route'}});

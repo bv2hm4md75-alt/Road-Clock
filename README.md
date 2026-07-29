@@ -1,4 +1,4 @@
-# Road Clock Alpha 7
+# Road Clock Alpha 7.1
 
 ## Changes
 
@@ -16,3 +16,7 @@
 ## Upload
 
 Replace the five existing repository files with the individual files inside this ZIP.
+
+
+## Fix
+- Repairs a JavaScript syntax error that prevented the map, GPS, and buttons from initializing.
