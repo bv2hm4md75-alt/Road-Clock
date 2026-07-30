@@ -1,4 +1,4 @@
-const CACHE='road-clock-beta-2-rc1-v1';
+const CACHE='road-clock-beta-2-rc2-v1';
 const CORE=['./','./index.html','./manifest.json'];
 
 self.addEventListener('install',event=>{

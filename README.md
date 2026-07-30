@@ -1,14 +1,20 @@
-# Road Clock Beta 2 RC1
+# Road Clock Beta 2 RC2
 
-## Navigation stabilization
-- Route matching occurs only when a real GPS sample arrives, not every animation frame.
-- Tight accuracy-aware road snapping replaces the previous oversized snap radius.
-- Route progress is monotonic to prevent snapping backward.
-- Vehicle, heading, and camera each use separate smoothing.
-- Prediction is capped to prevent the arrow from lunging ahead.
-- Camera look-ahead and zoom respond gradually to speed.
-- UI calculations are throttled so map rendering gets priority.
-- GPS outlier rejection and off-route confirmation are stricter.
+Private test release focused on navigation control and route usability.
 
-## Test first
-Use a familiar route with a passenger observing. This remains a private beta and is not a certified ELD or guaranteed truck-routing product.
+## RC2 changes
+- Free pan, rotate, pitch, and zoom during active navigation
+- Resume button returns to heading-follow mode
+- Jesse demo mode removed
+- Long-route time estimates recalibrated
+- Destination-local ETA uses the corrected drive estimate
+- Type-ahead destination predictions
+- Edit Route button
+- Recommended shutdown shows distance ahead
+- Recommended shutdown can become the active destination
+- Navigation camera rotates with travel direction
+
+## Testing priority
+Test route time, ETA, map exploration, Resume behavior, destination predictions, and Route to This Stop.
+
+This remains a private beta and is not a certified ELD or commercial truck-routing system.
