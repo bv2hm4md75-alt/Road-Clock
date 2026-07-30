@@ -1,20 +1,13 @@
-# Road Clock Beta 2 RC2
+# Road Clock Beta 2 RC3
 
-Private test release focused on navigation control and route usability.
+RC3 fixes three blocking issues from RC2:
 
-## RC2 changes
-- Free pan, rotate, pitch, and zoom during active navigation
-- Resume button returns to heading-follow mode
-- Jesse demo mode removed
-- Long-route time estimates recalibrated
-- Destination-local ETA uses the corrected drive estimate
-- Type-ahead destination predictions
-- Edit Route button
-- Recommended shutdown shows distance ahead
-- Recommended shutdown can become the active destination
-- Navigation camera rotates with travel direction
+- Old saved destinations no longer trap the app on a previous route.
+- **New Route** and **Clear Saved Route** explicitly reset route state.
+- Editing a route selects the full destination so it can be replaced immediately.
+- Touching, dragging, rotating, pitching, or zooming the map enters manual exploration mode.
+- The camera stays released until **Resume** is tapped.
+- Recommended shutdown search has an 11-second overall limit.
+- A failed stop search now returns a clear message instead of calculating forever.
 
-## Testing priority
-Test route time, ETA, map exploration, Resume behavior, destination predictions, and Route to This Stop.
-
-This remains a private beta and is not a certified ELD or commercial truck-routing system.
+This is a private beta and is not a certified ELD or commercial truck-routing system.

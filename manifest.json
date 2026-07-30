@@ -1,5 +1,5 @@
 {
-  "name": "Road Clock Beta 2 RC2",
+  "name": "Road Clock Beta 2 RC3",
   "short_name": "Road Clock",
   "start_url": "./",
   "scope": "./",
@@ -7,5 +7,5 @@
   "orientation": "portrait",
   "background_color": "#07110b",
   "theme_color": "#07110b",
-  "description": "Smoother navigation, route editing, destination predictions, and actionable shutdown routing"
+  "description": "Route reset, reliable map exploration, and bounded shutdown search"
 }

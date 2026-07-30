@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="./manifest.json">
 <link href="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.css" rel="stylesheet">
-<title>Road Clock Beta 2 RC2</title>
+<title>Road Clock Beta 2 RC3</title>
 <style>
 :root{
   --green:#55f17b;--amber:#ffc857;--blue:#59a7ff;--red:#ff6f7d;
@@ -153,6 +153,11 @@ label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{wi
   background:var(--control);color:var(--text);font-weight:900
 }
 .stopActions button{width:100%}.editRoute{white-space:nowrap}
+
+.demoButton{
+  width:100%;margin-top:10px;border:1px solid var(--line);border-radius:14px;
+  padding:13px;background:var(--control);color:var(--text);font-weight:900
+}
 </style>
 </head>
 <body>
@@ -179,7 +184,7 @@ label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{wi
   <div class="sheetContent">
     <div class="emptyState"><h2>Plan Route</h2><p>Choose destination to get started</p><button id="planPrimary" class="planPrimary">PLAN ROUTE</button></div>
     <div class="planned">
-      <div class="summary"><div><small>PLANNED ROUTE</small><b id="destinationName">Destination</b><span id="summaryLine">Ready to begin</span></div><div style="display:flex;gap:8px;align-items:center"><button id="editRoute" class="editRoute">EDIT</button><button id="startRoute" class="start">START ROUTE</button></div></div>
+      <div class="summary"><div><small>PLANNED ROUTE</small><b id="destinationName">Destination</b><span id="summaryLine">Ready to begin</span></div><div style="display:flex;gap:8px;align-items:center"><button id="newRoute" class="editRoute">NEW ROUTE</button><button id="editRoute" class="editRoute">EDIT</button><button id="startRoute" class="start">START ROUTE</button></div></div>
       <div class="metrics"><div class="metric"><small>ETA</small><b id="eta">--</b></div><div class="metric"><small>DISTANCE</small><b id="distance">--</b></div><div class="metric"><small>DRIVE TIME</small><b id="driveTime">--</b></div></div>
       <div class="expanded">
         <div class="stopBox"><small>RECOMMENDED SHUTDOWN</small><b id="stopName">Calculating…</b><span id="stopDetail">Searching along your route</span><div class="stopActions"><button id="routeToStop" disabled>ROUTE TO THIS STOP</button></div></div>
@@ -199,7 +204,7 @@ label{display:block;font-size:11px;color:var(--muted);margin:11px 0 6px}input{wi
       <div><label>Cycle remaining</label><input id="cycleHours" type="number" step=".25" value="70"></div>
       <div><label>Safety reserve</label><input id="buffer" type="number" step=".25" value=".5"></div>
     </div>
-    <button id="calculate" class="primary">CALCULATE ROUTE</button><div class="betaStatus"><span><i id="healthDot" class="healthDot"></i><strong id="healthLabel">BETA 2 RC2</strong></span><span id="gpsQuality">GPS --</span></div><div id="routeProgress" class="routeProgress">Preparing route…</div><p id="plannerMessage" class="note">Starts from your current GPS position.</p>
+    <button id="calculate" class="primary">CALCULATE ROUTE</button><button id="clearRoute" class="demoButton">CLEAR SAVED ROUTE</button><div class="betaStatus"><span><i id="healthDot" class="healthDot"></i><strong id="healthLabel">BETA 2 RC3</strong></span><span id="gpsQuality">GPS --</span></div><div id="routeProgress" class="routeProgress">Preparing route…</div><p id="plannerMessage" class="note">Starts from your current GPS position.</p>
   </div>
 </section>
 
@@ -240,7 +245,7 @@ let routeCoords=[],routeSteps=[],routeReady=false,driving=false,followMode=true,
 let mapReady=false,pendingRouteDraw=null;
 let trip={drive:10,duty:15,cycle:70,buffer:.5,distance:0,duration:0,originalDistance:0,originalDuration:0};
 let routeIndex=0,stepIndex=0,lastTick=null,timerId=null,sheetState=0;
-let userInteracting=false,ignoreMapInteractionUntil=0;
+let userInteracting=false,manualExplore=false,ignoreMapInteractionUntil=0;
 let destinationTimeZone=null,destinationTimeZoneAbbr='';
 let gpsTarget=null,visualPosition=null,visualHeading=0,targetHeading=0;
 let motionFrame=null,lastMotionFrame=0,lastGpsUpdate=0;
@@ -253,9 +258,9 @@ let cameraPosition=null,cameraHeading=0,matchedPosition=null,matchedHeading=0;
 let gpsVelocityMps=0,gpsCourse=0,lastRouteMatch=null,lastUiAt=0;
 let gpsAccuracy=Infinity,routeDeviationCount=0,rerouteBusy=false;
 let lastPersistAt=0;
-let lastDestinationQuery='',lastDestinationPoint=null,lastShutdownStop=null,selectedSuggestion=null,autocompleteTimer=null,autocompleteController=null;
+let lastDestinationQuery='',lastDestinationPoint=null,lastShutdownStop=null,selectedSuggestion=null,autocompleteTimer=null,autocompleteController=null,shutdownRequestId=0;
 const fallback=[-98.5795,39.8283];
-const RC_STATE_KEY='roadClockBetaStateV2';
+const RC_STATE_KEY='roadClockBetaStateV3';
 
 
 function toast(message,duration=2600){
@@ -376,15 +381,27 @@ function initMap(){
 
   map.on('error',e=>console.error('MapLibre error:',e?.error||e));
   const pauseFollowFromUser=()=>{
-    if(!driving||Date.now()<ignoreMapInteractionUntil||!userInteracting)return;
+    if(!driving||Date.now()<ignoreMapInteractionUntil)return;
     followMode=false;
+    manualExplore=true;
+    userInteracting=true;
     $('resume').classList.add('visible');
   };
 
-  map.getCanvas().addEventListener('pointerdown',()=>{userInteracting=true},{passive:true});
-  map.getCanvas().addEventListener('touchstart',()=>{userInteracting=true},{passive:true});
-  window.addEventListener('pointerup',()=>{setTimeout(()=>userInteracting=false,120)},{passive:true});
-  window.addEventListener('touchend',()=>{setTimeout(()=>userInteracting=false,120)},{passive:true});
+  map.getCanvas().addEventListener('pointerdown',()=>{
+    if(driving&&Date.now()>=ignoreMapInteractionUntil){
+      followMode=false;manualExplore=true;userInteracting=true;
+      $('resume').classList.add('visible');
+    }
+  },{passive:true});
+  map.getCanvas().addEventListener('touchstart',()=>{
+    if(driving&&Date.now()>=ignoreMapInteractionUntil){
+      followMode=false;manualExplore=true;userInteracting=true;
+      $('resume').classList.add('visible');
+    }
+  },{passive:true});
+  window.addEventListener('pointerup',()=>{userInteracting=false},{passive:true});
+  window.addEventListener('touchend',()=>{userInteracting=false},{passive:true});
 
   map.on('dragstart',pauseFollowFromUser);
   map.on('rotatestart',pauseFollowFromUser);
@@ -626,7 +643,7 @@ function startMotionLoop(){
         lastMarkerAt=now;
       }
 
-      if(driving&&followMode&&now-lastCameraAt>=33){
+      if(driving&&followMode&&!manualExplore&&now-lastCameraAt>=33){
         if(!cameraPosition)cameraPosition=[...visualPosition];
         const cameraGap=dist(cameraPosition,visualPosition);
         const cameraRate=cameraGap>45?7:3.8;
@@ -760,29 +777,50 @@ function pointAlongRoute(miles){
 }
 async function shutdown(){
   if(!routeCoords.length)return;
+  const requestId=++shutdownRequestId;
   const averageSpeed=trip.distance/Math.max(trip.duration,.1);
   const legalHours=Math.max(0,usableHours());
   const target=Math.min(trip.distance,Math.max(0,legalHours*averageSpeed));
   const pt=pointAlongRoute(target);
-  $('stopName').textContent='Searching route-aligned truck stops…';
-  $('stopDetail').textContent=`Legal reach near mile ${Math.round(target)}`;
+
+  lastShutdownStop=null;
+  $('routeToStop').disabled=true;
+  $('stopName').textContent='Finding a verified truck stop…';
+  $('stopDetail').textContent=`Searching near your legal reach, about ${Math.round(target)} mi ahead`;
+
+  const search=async()=>{
+    let stop=null;
+    try{stop=await findTomTomStop(pt,target)}catch(e){}
+    if(!stop){
+      try{stop=await findOSMStops(pt,target)}catch(e){}
+    }
+    return stop;
+  };
 
   let stop=null;
-  try{stop=await findTomTomStop(pt,target)}catch(e){}
-  if(!stop)stop=await findOSMStops(pt,target);
+  try{
+    stop=await Promise.race([
+      search(),
+      new Promise(resolve=>setTimeout(()=>resolve(null),11000))
+    ]);
+  }catch(e){stop=null}
+
+  if(requestId!==shutdownRequestId)return;
 
   if(stop){
     const completed=Math.max(0,(trip.originalDistance||trip.distance)-trip.distance);
     const ahead=Math.max(0,stop.routeMiles-completed);
     lastShutdownStop={...stop,aheadMiles:ahead};
     $('stopName').textContent=stop.name;
-    $('stopDetail').textContent=`${Math.round(ahead)} mi ahead${stop.verified===false?' · verify parking':''}`;
+    $('stopDetail').textContent=`${Math.round(ahead)} mi ahead${stop.verified===false?' · parking not verified':''}`;
     $('routeToStop').disabled=false;
     if(shutdownMarker)shutdownMarker.remove();
     shutdownMarker=new maplibregl.Marker({color:'#55f17b'}).setLngLat(stop.point).addTo(map);
   }else{
-    lastShutdownStop=null;$('routeToStop').disabled=true;$('stopName').textContent='No verified stop found';
-    $('stopDetail').textContent='Road Clock could not verify a route-aligned truck stop. Do not rely on an unverified parking location.';
+    lastShutdownStop=null;
+    $('routeToStop').disabled=true;
+    $('stopName').textContent='No verified stop returned';
+    $('stopDetail').textContent='The stop service did not respond. Retry by editing or recalculating the route.';
   }
 }
 function tick(){
@@ -885,6 +923,7 @@ function start(){
   stepIndex=0;
   lastTick=Date.now();
   userInteracting=false;
+  manualExplore=false;
   ignoreMapInteractionUntil=Date.now()+1200;
   visualPosition=currentPosition?[...currentPosition]:visualPosition;
   cameraPosition=currentPosition?[...currentPosition]:cameraPosition;
@@ -914,6 +953,7 @@ function stop(){
   driving=false;
   followMode=true;
   userInteracting=false;
+  manualExplore=false;
   $('sheet').classList.remove('driving');
   $('turn').classList.remove('visible');
   $('brand').style.display='flex';
@@ -933,7 +973,41 @@ function stop(){
 }
 function setSheet(s){sheetState=Math.max(0,Math.min(2,s));$('sheet').classList.remove('mid','full');if(sheetState===1)$('sheet').classList.add('mid');if(sheetState===2)$('sheet').classList.add('full')}
 let drag=false,sy=0,cy=0;$('handleArea').addEventListener('pointerdown',e=>{drag=true;sy=cy=e.clientY;$('handleArea').setPointerCapture(e.pointerId)});$('handleArea').addEventListener('pointermove',e=>{if(drag)cy=e.clientY});$('handleArea').addEventListener('pointerup',()=>{if(!drag)return;drag=false;const d=cy-sy;if(d<-35)setSheet(sheetState+1);else if(d>35)setSheet(sheetState-1);else setSheet(sheetState===0?1:0)});
-$('planPrimary').onclick=()=>$('planner').classList.add('open');$('closePlanner').onclick=()=>$('planner').classList.remove('open');
+
+function resetRouteState(openPlanner=true){
+  driving=false;followMode=true;manualExplore=false;userInteracting=false;
+  routeReady=false;routeCoords=[];routeSteps=[];routeIndex=0;stepIndex=0;
+  lastDestinationQuery='';lastDestinationPoint=null;lastShutdownStop=null;
+  selectedSuggestion=null;destinationTimeZone=null;
+  if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}
+  if(timerId){clearInterval(timerId);timerId=null}
+  if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null}
+  try{localStorage.removeItem(RC_STATE_KEY)}catch(e){}
+  $('destination').value='';
+  $('destinationName').textContent='Destination';
+  $('summaryLine').textContent='Ready to begin';
+  $('sheet').classList.remove('hasRoute','driving');
+  $('turn').classList.remove('visible');
+  $('resume').classList.remove('visible');
+  $('brand').style.display='flex';
+  $('right').classList.remove('active');
+  $('clockRail').classList.remove('active');
+  $('startRoute').style.display='block';
+  $('stopName').textContent='Plan a route first';
+  $('stopDetail').textContent='A verified shutdown option will appear here.';
+  $('routeToStop').disabled=true;
+  if(destinationMarker){destinationMarker.remove();destinationMarker=null}
+  if(shutdownMarker){shutdownMarker.remove();shutdownMarker=null}
+  if(map?.getLayer('routeLine'))map.removeLayer('routeLine');
+  if(map?.getSource('route'))map.removeSource('route');
+  if(openPlanner){
+    $('planner').classList.add('open');
+    setTimeout(()=>{$('destination').focus();$('destination').select()},120);
+  }
+  toast('Ready for a new route');
+}
+
+$('planPrimary').onclick=()=>{$('planner').classList.add('open');setTimeout(()=>$('destination').focus(),120)};$('closePlanner').onclick=()=>$('planner').classList.remove('open');
 
 async function calculateRoute(destinationText,overridePoint=null){
   if(!mapReady||!map.isStyleLoaded()){
@@ -954,6 +1028,11 @@ async function calculateRoute(destinationText,overridePoint=null){
     return false;
   }
   const q=(destinationText||$('destination').value).trim();
+  shutdownRequestId++;
+  lastShutdownStop=null;
+  $('routeToStop').disabled=true;
+  $('stopName').textContent='Calculating…';
+  $('stopDetail').textContent='Searching along your new route';
   if(!q){$('plannerMessage').textContent='Enter a destination.';return false}
   const b=$('calculate');b.disabled=true;b.textContent='CALCULATING…';
   try{
@@ -1046,9 +1125,12 @@ document.addEventListener('pointerdown',e=>{
 });
 $('editRoute').onclick=()=>{
   if(lastDestinationQuery)$('destination').value=lastDestinationQuery;
+  selectedSuggestion=null;
   $('planner').classList.add('open');
-  setTimeout(()=>$('destination').focus(),120);
+  setTimeout(()=>{$('destination').focus();$('destination').select()},120);
 };
+$('newRoute').onclick=()=>resetRouteState(true);
+$('clearRoute').onclick=()=>resetRouteState(true);
 $('routeToStop').onclick=async()=>{
   if(!lastShutdownStop)return;
   const label=lastShutdownStop.name||'Recommended shutdown';
@@ -1060,6 +1142,7 @@ $('routeToStop').onclick=async()=>{
 $('startRoute').onclick=start;$('endRoute').onclick=stop;$('pauseDrive').onclick=()=>{drivePaused=!drivePaused;$('pauseDrive').textContent=drivePaused?'RESUME DRIVE CLOCK':'PAUSE DRIVE CLOCK'};
 $('resume').onclick=()=>{
   followMode=true;
+  manualExplore=false;
   userInteracting=false;
   ignoreMapInteractionUntil=Date.now()+900;
   $('resume').classList.remove('visible');
@@ -1071,6 +1154,7 @@ $('resume').onclick=()=>{
 };
 $('recenter').onclick=()=>{
   followMode=true;
+  manualExplore=false;
   userInteracting=false;
   ignoreMapInteractionUntil=Date.now()+900;
   $('resume').classList.remove('visible');
@@ -1085,7 +1169,7 @@ $('recenter').onclick=()=>{
     });
   }
 };
-$('zoomIn').onclick=()=>{if(driving){followMode=false;$('resume').classList.add('visible')}map.zoomIn()};$('zoomOut').onclick=()=>{if(driving){followMode=false;$('resume').classList.add('visible')}map.zoomOut()};$('clockToggle').onclick=()=>{$('clockStack').classList.toggle('collapsed');$('clockToggle').textContent=$('clockStack').classList.contains('collapsed')?'›':'‹'};
+$('zoomIn').onclick=()=>{if(driving){followMode=false;manualExplore=true;$('resume').classList.add('visible')}map.zoomIn()};$('zoomOut').onclick=()=>{if(driving){followMode=false;manualExplore=true;$('resume').classList.add('visible')}map.zoomOut()};$('clockToggle').onclick=()=>{$('clockStack').classList.toggle('collapsed');$('clockToggle').textContent=$('clockStack').classList.contains('collapsed')?'›':'‹'};
 $('themeButton').onclick=()=>$('settings').classList.add('open');$('closeSettings').onclick=()=>$('settings').classList.remove('open');document.querySelectorAll('[data-theme]').forEach(b=>b.onclick=()=>applyTheme(b.dataset.theme));
 $('tomtomKey').value=localStorage.getItem('tomtomKey')||'';$('saveKey').onclick=()=>{localStorage.setItem('tomtomKey',$('tomtomKey').value.trim());$('settings').classList.remove('open')};
 $('aiButton').onclick=()=>{
